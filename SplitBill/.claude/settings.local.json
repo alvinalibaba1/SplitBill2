@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_hy1iU2/**)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_DHxIEd/**)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_rVqr3v/**)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_piASuP/**)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_twteO3/**)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_z3451o/**)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_dNtPjK/**)",
+      "Read(//var/folders/p_/kgz32t5x29v8tycp03s8kmb40000gn/T/TemporaryItems/NSIRD_screencaptureui_MVIRbG/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
