@@ -209,10 +209,10 @@ struct HomeView: View {
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(Color.textPrimary)
-                    .foregroundColor(.white)
+                    .background(Color.appSurface)
+                    .foregroundColor(Color.textPrimary)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: Color.textPrimary.opacity(0.2), radius: 10, y: 5)
+                    .shadow(color: Color.appSurface.opacity(0.2), radius: 10, y: 5)
             }
         }
     }
