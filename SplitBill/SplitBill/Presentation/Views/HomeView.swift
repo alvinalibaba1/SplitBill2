@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import VisionKit
+import Vision
 
 struct HomeView: View {
 
@@ -15,8 +15,8 @@ struct HomeView: View {
 
     @Binding var selectedTab: Int
 
-
-    @State private var showScanner = false
+    @State private var showCamera = false
+    @State private var showSettings = false
     @State private var haptics = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
@@ -36,37 +36,152 @@ struct HomeView: View {
         }
         .navigationTitle("")
         .navigationBarHidden(true)
-        // Document camera sheet
-        .sheet(isPresented: $showScanner) {
-            DocumentScanner { lines in
-                let items = SmartBillParser.extractItems(from: lines)
-                let adjustments = SmartBillParser.extractAdjustments(from: lines)
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showCamera) {
+            BillCameraView { image in
+                processImage(image)
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    // MARK: - OCR Processing
+    private func processImage(_ image: UIImage) {
+        guard let cgImage = image.cgImage else { return }
+
+        LoadingState.shared.isProcessingScan = true
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            var observed: [(text: String, y: CGFloat)] = []
+
+            let request = VNRecognizeTextRequest { req, _ in
+                guard let results = req.results as? [VNRecognizedTextObservation] else { return }
+                for obs in results {
+                    if let top = obs.topCandidates(1).first {
+                        observed.append((top.string, obs.boundingBox.origin.y))
+                    }
+                }
+            }
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+            request.recognitionLanguages = ["en-US", "id-ID"]
+
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            try? handler.perform([request])
+
+            let lines = observed.sorted { $0.y > $1.y }.map { $0.text }
+            let items       = SmartBillParser.extractItems(from: lines)
+            let adjustments = SmartBillParser.extractAdjustments(from: lines)
+
+            DispatchQueue.main.async {
+                LoadingState.shared.isProcessingScan = false
                 let data = ScannedBillData(
                     billName: "Scanned Bill",
                     total: "",
                     items: items,
                     adjustments: adjustments
                 )
-                router.push(.billResult(data))
-                showScanner = false
+                router.push(.scanReview(data))
             }
         }
     }
 
     // MARK: - Header
     private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("SplitBill")
-                    .roundedFont(28, weight: .bold)
-                    .foregroundColor(Color.textPrimary)
-                Text("Split smarter, not harder")
-                    .roundedFont(14, weight: .regular)
-                    .foregroundColor(Color.textSecondary)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                // Profile avatar — opens Settings
+                Button(action: { showSettings = true }) {
+                    Circle()
+                        .fill(Color.appPrimary.opacity(0.12))
+                        .frame(width: 42, height: 42)
+                        .overlay(
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(Color.appPrimary)
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Notification bell
+                Button(action: {}) {
+                    ZStack(alignment: .topTrailing) {
+                        Circle()
+                            .fill(Color.appPrimary.opacity(0.08))
+                            .frame(width: 42, height: 42)
+                            .overlay(
+                                Image(systemName: "bell.fill")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(Color.appPrimary)
+                            )
+
+                        // Badge dot
+                        if !viewModel.history.isEmpty {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 10, height: 10)
+                                .overlay(Circle().stroke(Color.appBackground, lineWidth: 2))
+                                .offset(x: 2, y: -2)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
             }
-            Spacer()
+
+            totalOwedCard
         }
         .padding(.top, 20)
+    }
+
+    private var totalOwedCard: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("PEOPLE OWE YOU")
+                    .roundedFont(11, weight: .semibold)
+                    .foregroundColor(Color.appPrimary.opacity(0.7))
+                    .tracking(0.8)
+
+                Text(totalOwed.toCurrency())
+                    .roundedFont(36, weight: .bold)
+                    .foregroundColor(Color.appPrimary)
+                    .contentTransition(.numericText())
+                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: totalOwed)
+
+                Text(viewModel.history.isEmpty
+                     ? "No bills yet"
+                     : "across \(viewModel.history.count) bill\(viewModel.history.count == 1 ? "" : "s")")
+                    .roundedFont(13, weight: .regular)
+                    .foregroundColor(Color.textSecondary)
+            }
+
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Color.appPrimary.opacity(0.1))
+                    .frame(width: 56, height: 56)
+                Image(systemName: "arrow.down.left.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(Color.appPrimary)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .background(Color.appSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.appPrimary.opacity(0.08), radius: 12, x: 0, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.appPrimary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var totalOwed: Double {
+        viewModel.history.reduce(0) { $0 + $1.totalAmount }
     }
 
     // MARK: - Action Buttons
@@ -88,7 +203,7 @@ struct HomeView: View {
 
             Button(action: {
                 haptics.impactOccurred()
-                showScanner = true
+                showCamera = true
             }) {
                 Label("Quick Scan", systemImage: "viewfinder")
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
@@ -102,16 +217,16 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Split History Preview
+    // MARK: - Recent Split Preview
     private var splitHistory: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Split History")
+                Text("Recent Split")
                     .roundedFont(18, weight: .bold)
                     .foregroundColor(Color.textPrimary)
                 Spacer()
                 if !viewModel.history.isEmpty {
-                    Button("See more") { selectedTab = 1 }
+                    Button("See all") { selectedTab = 2 }
                         .font(AppTheme.Fonts.inter(14, weight: .medium))
                         .foregroundColor(Color.appPrimary)
                 }
@@ -153,10 +268,51 @@ struct HomeView: View {
     }
 }
 
+// MARK: - Plain Camera (UIImagePickerController — no filter UI)
+struct BillCameraView: UIViewControllerRepresentable {
+    var onCapture: (UIImage) -> Void
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onCapture: onCapture)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        var onCapture: (UIImage) -> Void
+
+        init(onCapture: @escaping (UIImage) -> Void) {
+            self.onCapture = onCapture
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            picker.dismiss(animated: true)
+            if let image = info[.originalImage] as? UIImage {
+                onCapture(image)
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
 
 #Preview {
     NavigationStack {
         HomeView(selectedTab: .constant(0))
+            .environmentObject(NavigationRouter())
     }
 }

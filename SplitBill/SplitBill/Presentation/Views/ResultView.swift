@@ -132,7 +132,7 @@ var body: some View {
 
         }
         .padding(20)
-        .background(Color.white)
+        .background(Color.appSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
     }
@@ -203,14 +203,14 @@ var body: some View {
                             }
                         }
                         .padding()
-                        .background(Color.white)
+                        .background(Color.appSurface)
                         .cornerRadius(14)
                     }
                 }
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.appSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
     }
@@ -249,14 +249,14 @@ var body: some View {
                                 .foregroundColor(adj.isDiscount ? .red : Color.textPrimary)
                         }
                         .padding()
-                        .background(Color.white)
+                        .background(Color.appSurface)
                         .cornerRadius(14)
                     }
                 }
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.appSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
     }

@@ -12,8 +12,17 @@ import UIKit
 struct SplitBillApp: App {
 
     init() {
-        // Option 1: Soft Minimal — #F8F9FA
-        let bg = UIColor(red: 0.973, green: 0.976, blue: 0.980, alpha: 1.0)
+        // Option 2: Ocean Blue + Coral — adaptive dark mode
+        let bg = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "0F172A")
+                : UIColor(hex: "FAFAFA")
+        }
+        let textPrimary = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "F1F5F9")
+                : UIColor(hex: "1E293B")
+        }
 
         let tabAppearance = UITabBarAppearance()
         tabAppearance.configureWithOpaqueBackground()
@@ -24,15 +33,21 @@ struct SplitBillApp: App {
         let navAppearance = UINavigationBarAppearance()
         navAppearance.configureWithOpaqueBackground()
         navAppearance.backgroundColor = bg
-        navAppearance.titleTextAttributes = [.foregroundColor: UIColor(red: 0.176, green: 0.204, blue: 0.212, alpha: 1)]
-        navAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor(red: 0.176, green: 0.204, blue: 0.212, alpha: 1)]
+        navAppearance.titleTextAttributes = [.foregroundColor: textPrimary]
+        navAppearance.largeTitleTextAttributes = [.foregroundColor: textPrimary]
         UINavigationBar.appearance().standardAppearance = navAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
     }
 
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+
     var body: some Scene {
         WindowGroup {
-            TabBarView()
+            if hasSeenOnboarding {
+                TabBarView()
+            } else {
+                OnboardingView()
+            }
         }
     }
 }

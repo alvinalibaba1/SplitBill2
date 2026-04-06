@@ -9,9 +9,10 @@ struct TabBarView: View {
 
     @State private var selectedTab = 0
     @StateObject private var loadingState = LoadingState.shared
-    
-    // Routers for independent tab navigation handling
-    @StateObject private var homeRouter = NavigationRouter()
+
+    // Independent routers per tab
+    @StateObject private var homeRouter    = NavigationRouter()
+    @StateObject private var statsRouter   = NavigationRouter()
     @StateObject private var historyRouter = NavigationRouter()
 
     var body: some View {
@@ -21,9 +22,7 @@ struct TabBarView: View {
                 // MARK: - Home Tab
                 NavigationStack(path: $homeRouter.path) {
                     HomeView(selectedTab: $selectedTab)
-                        .navigationDestination(for: RouterDestination.self) { dest in
-                            view(for: dest)
-                        }
+                        .navigationDestination(for: RouterDestination.self) { view(for: $0) }
                 }
                 .environmentObject(homeRouter)
                 .tabItem {
@@ -32,19 +31,29 @@ struct TabBarView: View {
                 }
                 .tag(0)
 
+                // MARK: - Stats Tab
+                NavigationStack(path: $statsRouter.path) {
+                    StatsView()
+                        .navigationDestination(for: RouterDestination.self) { view(for: $0) }
+                }
+                .environmentObject(statsRouter)
+                .tabItem {
+                    Image(systemName: selectedTab == 1 ? "chart.bar.fill" : "chart.bar")
+                    Text("Statistics")
+                }
+                .tag(1)
+
                 // MARK: - History Tab
                 NavigationStack(path: $historyRouter.path) {
                     HistoryView()
-                        .navigationDestination(for: RouterDestination.self) { dest in
-                            view(for: dest)
-                        }
+                        .navigationDestination(for: RouterDestination.self) { view(for: $0) }
                 }
                 .environmentObject(historyRouter)
                 .tabItem {
-                    Image(systemName: selectedTab == 1 ? "clock.fill" : "clock")
+                    Image(systemName: selectedTab == 2 ? "clock.fill" : "clock")
                     Text("History")
                 }
-                .tag(1)
+                .tag(2)
             }
             .tint(Color.appPrimary)
 
@@ -54,12 +63,14 @@ struct TabBarView: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private func view(for destination: RouterDestination) -> some View {
         switch destination {
         case .manualInput:
             MainView()
+        case .scanReview(let data):
+            ScanReviewView(scannedData: data)
         case .billResult(let data):
             MainView(
                 billTitle: data.billName,

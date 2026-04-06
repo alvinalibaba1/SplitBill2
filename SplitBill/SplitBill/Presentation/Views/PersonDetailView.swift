@@ -124,7 +124,7 @@ struct PersonDetailView: View {
                             }
                         }
                         .padding()
-                        .background(Color.white)
+                        .background(Color.appSurface)
                         .cornerRadius(14)
                         .shadow(color: Color.gray.opacity(0.08), radius: 6, x: 0, y: 3)
                     }
@@ -144,7 +144,7 @@ struct PersonDetailView: View {
                 .font(AppTheme.Fonts.inter(17, weight: .medium))
                 .foregroundColor(Color.textPrimary)
                 .padding()
-                .background(Color.white)
+                .background(Color.appSurface)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -166,7 +166,7 @@ struct PersonDetailView: View {
                 .foregroundColor(Color.textPrimary)
                 .keyboardType(.numberPad)
                 .padding()
-                .background(Color.white)
+                .background(Color.appSurface)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -283,7 +283,7 @@ struct PersonDetailView: View {
                             }
                         }
                         .padding()
-                        .background(Color.white)
+                        .background(Color.appSurface)
                         .cornerRadius(14)
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)

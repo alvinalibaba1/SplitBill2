@@ -57,7 +57,7 @@ struct AddPersonSheet: View {
             }
             .padding(20)
             .frame(maxWidth: 320)
-            .background(Color.white)
+            .background(Color.appSurface)
             .cornerRadius(20)
             .shadow(color: Color.black.opacity(0.2), radius: 12, x: 0, y: 6)
             .onAppear { isFocused = true }

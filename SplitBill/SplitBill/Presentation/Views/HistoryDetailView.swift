@@ -60,7 +60,7 @@ struct HistoryDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(Color.white)
+        .background(Color.appSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
     }
@@ -97,7 +97,7 @@ struct HistoryDetailView: View {
                             .foregroundColor(Color.textPrimary)
                     }
                     .padding()
-                    .background(Color.white)
+                    .background(Color.appSurface)
                     .cornerRadius(14)
                     .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
                 }

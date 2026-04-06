@@ -14,7 +14,10 @@ class SplitBillViewModel: ObservableObject {
     @Published var people: [Person] = []
     @Published var items: [BillItem] = []
     @Published var adjustments: [Adjustment] = []
-    @Published var scannedItems: [(name: String, price: Double)] = [] // Items from OCR scan
+    @Published var scannedItems: [(name: String, price: Double)] = []
+    @Published var isEqualSplit: Bool = false {
+        didSet { recalcTotals() }
+    }
 
     init(billTitle: String = "", totalAmount: String = "", scannedItems: [(name: String, price: Double)] = [], scannedAdjustments: [(name: String, amount: Double)] = []) {
         self.billTitle = billTitle
@@ -163,6 +166,14 @@ class SplitBillViewModel: ObservableObject {
 
     func recalcTotals() {
         guard !people.isEmpty else { return }
+
+        if isEqualSplit {
+            let even = totalForSplit / Double(people.count)
+            for index in people.indices {
+                people[index].amount = even
+            }
+            return
+        }
 
         var totals: [UUID: Double] = [:]
 

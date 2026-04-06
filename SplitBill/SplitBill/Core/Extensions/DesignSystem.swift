@@ -7,29 +7,80 @@
 
 import SwiftUI
 
-// MARK: - App Theme (Option 1: Soft Minimal)
+// MARK: - UIColor hex helper (for adaptive dark mode)
+extension UIColor {
+    convenience init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r = CGFloat((int >> 16) & 0xFF) / 255
+        let g = CGFloat((int >> 8)  & 0xFF) / 255
+        let b = CGFloat( int        & 0xFF) / 255
+        self.init(red: r, green: g, blue: b, alpha: 1)
+    }
+}
+
+// MARK: - App Theme (Option 2: Ocean Blue + Coral — with Dark Mode)
 struct AppTheme {
     struct Colors {
-        // Primary Brand Color - Soft Indigo
-        static let primary = Color(hex: "6C5CE7")
-        static let primaryDark = Color(hex: "5A4BD1")
-        static let primaryLight = Color(hex: "E8E5FC")
+        // Primary Brand Color - Ocean Blue
+        static let primary = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "4D8EFF") // lighter for dark bg
+                : UIColor(hex: "2563EB")
+        })
+        static let primaryDark = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "3A7EF0")
+                : UIColor(hex: "1D4ED8")
+        })
+        static let primaryLight = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "1E3A6E")
+                : UIColor(hex: "DBEAFE")
+        })
 
-        // Secondary - Mint Green
-        static let secondary = Color(hex: "00CEC9")
+        // Secondary - Coral
+        static let secondary = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "FF9F4D")
+                : UIColor(hex: "F97316")
+        })
 
         // Backgrounds
-        static let background = Color(hex: "F8F9FA")
-        static let surface = Color.white
+        static let background = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "0F172A") // Deep Navy dark
+                : UIColor(hex: "FAFAFA")
+        })
+        static let surface = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "1E293B") // Slate dark card
+                : UIColor(hex: "FFFFFF")
+        })
 
         // Text
-        static let textPrimary = Color(hex: "2D3436") // Dark Charcoal
-        static let textSecondary = Color(hex: "636E72") // Cool Gray
+        static let textPrimary = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "F1F5F9")
+                : UIColor(hex: "1E293B")
+        })
+        static let textSecondary = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(hex: "94A3B8")
+                : UIColor(hex: "64748B")
+        })
 
         // Semantic
-        static let success = Color(hex: "00CEC9")
-        static let error = Color(hex: "EF4444")
-        static let warning = Color(hex: "F59E0B")
+        static let success = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark ? UIColor(hex: "34D399") : UIColor(hex: "10B981")
+        })
+        static let error = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark ? UIColor(hex: "F87171") : UIColor(hex: "EF4444")
+        })
+        static let warning = Color(UIColor { tc in
+            tc.userInterfaceStyle == .dark ? UIColor(hex: "FBBF24") : UIColor(hex: "F59E0B")
+        })
     }
 
     struct Dimensions {

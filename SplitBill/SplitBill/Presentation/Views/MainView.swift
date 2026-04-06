@@ -132,7 +132,7 @@ struct MainView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color.white)
+            .background(Color.appSurface)
 
             Divider().padding(.leading, 16)
 
@@ -150,7 +150,32 @@ struct MainView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color.white)
+            .background(Color.appSurface)
+
+            Divider().padding(.leading, 16)
+
+            // Equal split toggle
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Split Equally")
+                        .font(AppTheme.Fonts.inter(17, weight: .regular))
+                        .foregroundColor(Color.textPrimary)
+                    if viewModel.isEqualSplit {
+                        Text("Each person pays \((viewModel.totalForSplit / Double(max(viewModel.people.count, 1))).toCurrency())")
+                            .font(AppTheme.Fonts.inter(12, weight: .regular))
+                            .foregroundColor(Color.appPrimary)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+                .animation(.spring(response: 0.3), value: viewModel.isEqualSplit)
+                Spacer()
+                Toggle("", isOn: $viewModel.isEqualSplit)
+                    .tint(Color.appPrimary)
+                    .labelsHidden()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.appSurface)
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
@@ -185,7 +210,7 @@ struct MainView: View {
                     }
                 }
             }
-            .background(Color.white)
+            .background(Color.appSurface)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
             .padding(.horizontal, 16)
@@ -262,7 +287,7 @@ struct MainView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 13)
-            .background(Color.white)
+            .background(Color.appSurface)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
         }
@@ -285,7 +310,7 @@ struct MainView: View {
                     }
                 }
             }
-            .background(Color.white)
+            .background(Color.appSurface)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
             .padding(.horizontal, 16)
@@ -351,7 +376,7 @@ struct MainView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 13)
-            .background(Color.white)
+            .background(Color.appSurface)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
         }
