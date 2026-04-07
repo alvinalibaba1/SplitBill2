@@ -17,6 +17,7 @@ struct HomeView: View {
 
     @State private var showCamera = false
     @State private var showSettings = false
+    @State private var showOweSummary = false
     @State private var haptics = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
@@ -44,6 +45,13 @@ struct HomeView: View {
                 processImage(image)
             }
             .ignoresSafeArea()
+        }
+        .sheet(isPresented: $showOweSummary) {
+            OweSummarySheet(history: viewModel.history) { bill in
+                router.push(.historyDetail(bill))
+            }
+            .presentationDetents([.fraction(0.6), .large])
+            .presentationDragIndicator(.hidden)
         }
     }
 
@@ -138,46 +146,61 @@ struct HomeView: View {
     }
 
     private var totalOwedCard: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("PEOPLE OWE YOU")
-                    .roundedFont(11, weight: .semibold)
-                    .foregroundColor(Color.appPrimary.opacity(0.7))
-                    .tracking(0.8)
+        Button(action: {
+            guard !viewModel.history.isEmpty else { return }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showOweSummary = true
+        }) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("PEOPLE OWE YOU")
+                        .roundedFont(11, weight: .semibold)
+                        .foregroundColor(Color.appPrimary.opacity(0.7))
+                        .tracking(0.8)
 
-                Text(totalOwed.toCurrency())
-                    .roundedFont(36, weight: .bold)
-                    .foregroundColor(Color.appPrimary)
-                    .contentTransition(.numericText())
-                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: totalOwed)
+                    Text(totalOwed.toCurrency())
+                        .roundedFont(36, weight: .bold)
+                        .foregroundColor(Color.appPrimary)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: totalOwed)
 
-                Text(viewModel.history.isEmpty
-                     ? "No bills yet"
-                     : "across \(viewModel.history.count) bill\(viewModel.history.count == 1 ? "" : "s")")
-                    .roundedFont(13, weight: .regular)
-                    .foregroundColor(Color.textSecondary)
+                    HStack(spacing: 4) {
+                        Text(viewModel.history.isEmpty
+                             ? "No bills yet"
+                             : "across \(viewModel.history.count) bill\(viewModel.history.count == 1 ? "" : "s")")
+                            .roundedFont(13, weight: .regular)
+                            .foregroundColor(Color.textSecondary)
+
+                        if !viewModel.history.isEmpty {
+                            Text("· tap to see breakdown")
+                                .roundedFont(12, weight: .regular)
+                                .foregroundColor(Color.appPrimary.opacity(0.6))
+                        }
+                    }
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(Color.appPrimary.opacity(0.1))
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color.appPrimary)
+                }
             }
-
-            Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(Color.appPrimary.opacity(0.1))
-                    .frame(width: 56, height: 56)
-                Image(systemName: "arrow.down.left.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(Color.appPrimary)
-            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .background(Color.appSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.appPrimary.opacity(0.08), radius: 12, x: 0, y: 4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.appPrimary.opacity(0.08), lineWidth: 1)
+            )
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .background(Color.appSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.appPrimary.opacity(0.08), radius: 12, x: 0, y: 4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.appPrimary.opacity(0.08), lineWidth: 1)
-        )
+        .buttonStyle(.plain)
     }
 
     private var totalOwed: Double {
