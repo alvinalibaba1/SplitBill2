@@ -31,6 +31,23 @@ struct BillHistory: Identifiable, Codable, Hashable {
         self.splitAmount = splitAmount
     }
 
+    /// Init for updating an existing bill (preserves HistoryPerson ids and isPaid)
+    init(
+        id: UUID,
+        date: Date,
+        title: String,
+        totalAmount: Double,
+        people: [HistoryPerson],
+        splitAmount: Double
+    ) {
+        self.id = id
+        self.date = date
+        self.title = title
+        self.totalAmount = totalAmount
+        self.people = people
+        self.splitAmount = splitAmount
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -52,10 +69,20 @@ struct HistoryPerson: Identifiable, Codable, Hashable {
     let id: UUID
     let name: String
     let amount: Double
+    var isPaid: Bool
 
-    init(id: UUID = UUID(), name: String, amount: Double) {
+    init(id: UUID = UUID(), name: String, amount: Double, isPaid: Bool = false) {
         self.id = id
         self.name = name
         self.amount = amount
+        self.isPaid = isPaid
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        amount = try container.decode(Double.self, forKey: .amount)
+        isPaid = try container.decodeIfPresent(Bool.self, forKey: .isPaid) ?? false
     }
 }

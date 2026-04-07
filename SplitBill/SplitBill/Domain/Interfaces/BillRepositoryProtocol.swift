@@ -12,4 +12,5 @@ protocol BillRepositoryProtocol {
     func saveHistory(_ bill: BillHistory)
     func deleteHistory(at offsets: IndexSet)
     func clearAllHistory()
+    func updateHistory(_ bill: BillHistory)
 }
