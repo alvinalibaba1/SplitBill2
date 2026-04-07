@@ -46,20 +46,17 @@ struct MainView: View {
                             .padding(.bottom, 4)
                     }
 
-                    // Bill name + running total
+                    // Bill name + total + equal split toggle
                     summarySection.padding(.top, 20)
 
-                    // People
+                    // People — unified card: empty hint + rows + Add Person
                     sectionHeader("PEOPLE")
-                    peopleRows
-                    addPersonRow
+                    peopleSectionCard
 
-                    // Extras
+                    // Extras — unified card: rows + Add Extra menu
                     sectionHeader("EXTRAS")
-                    adjustmentRows
-                    addExtraRow
+                    extrasSectionCard
 
-                    // Space for sticky button
                     Color.clear.frame(height: 100)
                 }
             }
@@ -88,17 +85,17 @@ struct MainView: View {
                 }
             )
         }
-        .overlay(alignment: .center) {
-            if showingAddPerson {
-                AddPersonSheet(
-                    isPresented: $showingAddPerson,
-                    onAdd: { viewModel.addPerson(name: $0) }
-                )
-            }
+        // ✅ Converted from custom ZStack overlay → native sheet
+        // Gives drag-to-dismiss, safe area handling, and proper iPad support
+        .sheet(isPresented: $showingAddPerson) {
+            AddPersonSheet(onAdd: { viewModel.addPerson(name: $0) })
+                .presentationDetents([.height(320)])
+                .presentationDragIndicator(.visible)
         }
     }
 
     // MARK: - Scan Banner
+    // ✅ More directional copy — tells user exactly what action to take
     private var scanBanner: some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
@@ -107,7 +104,7 @@ struct MainView: View {
                 .foregroundColor(Color.appSecondary)
                 .font(.system(size: 16))
 
-            Text("\(viewModel.scannedItems.count) scanned items — tap a person to assign")
+            Text("\(viewModel.scannedItems.count) items ready — tap a person below to assign them")
                 .font(AppTheme.Fonts.inter(13, weight: .medium))
                 .foregroundColor(Color.appSecondary)
 
@@ -123,7 +120,6 @@ struct MainView: View {
     // MARK: - Bill Name + Total Card
     private var summarySection: some View {
         VStack(spacing: 0) {
-            // Bill name row
             HStack {
                 TextField("Name this bill", text: $viewModel.billTitle)
                     .font(AppTheme.Fonts.inter(17, weight: .medium))
@@ -136,7 +132,6 @@ struct MainView: View {
 
             Divider().padding(.leading, 16)
 
-            // Total row
             HStack {
                 Text("Total")
                     .font(AppTheme.Fonts.inter(17, weight: .regular))
@@ -154,7 +149,6 @@ struct MainView: View {
 
             Divider().padding(.leading, 16)
 
-            // Equal split toggle
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Split Equally")
@@ -196,31 +190,66 @@ struct MainView: View {
         .padding(.bottom, 8)
     }
 
-    // MARK: - People Rows
-    @ViewBuilder
-    private var peopleRows: some View {
-        if !viewModel.people.isEmpty {
-            VStack(spacing: 0) {
+    // MARK: - People Section (unified card)
+    // ✅ addPersonRow merged inside the card — one cohesive block instead of two floating cards
+    // ✅ Empty hint guides first-time users instead of a blank gap
+    private var peopleSectionCard: some View {
+        VStack(spacing: 0) {
+            if viewModel.people.isEmpty {
+                // Empty hint — first-time user guidance
+                HStack(spacing: 10) {
+                    Image(systemName: "person.2")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color.textSecondary.opacity(0.35))
+                    Text("Add people to start splitting")
+                        .font(AppTheme.Fonts.inter(14, weight: .regular))
+                        .foregroundColor(Color.textSecondary.opacity(0.55))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 22)
+
+                Divider().padding(.leading, 16)
+            } else {
                 ForEach(Array(viewModel.people.enumerated()), id: \.element.id) { index, person in
                     VStack(spacing: 0) {
                         personRow(person: person, index: index)
-                        if index < viewModel.people.count - 1 {
-                            Divider().padding(.leading, 56)
-                        }
+                        Divider().padding(.leading, 56)
                     }
                 }
             }
-            .background(Color.appSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
-            .padding(.horizontal, 16)
+
+            // Add Person — always last row inside the card
+            Button(action: { showingAddPerson = true }) {
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(Color.appPrimary.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color.appPrimary)
+                        )
+                    Text("Add Person")
+                        .font(AppTheme.Fonts.inter(16, weight: .medium))
+                        .foregroundColor(Color.appPrimary)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
+        .background(Color.appSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+        .padding(.horizontal, 16)
     }
 
+    // MARK: - Person Row
     private func personRow(person: Person, index: Int) -> some View {
         Button(action: { selectedPerson = person }) {
             HStack(spacing: 12) {
-                // Colored avatar
                 Circle()
                     .fill(avatarColor(index: index))
                     .frame(width: 36, height: 36)
@@ -236,10 +265,11 @@ struct MainView: View {
 
                 Spacer()
 
+                // ✅ Amount now uses textPrimary + bold — it's the most important number on this row
                 if person.amount > 0 {
                     Text(person.amount.toCurrency())
-                        .font(AppTheme.Fonts.inter(15, weight: .semibold))
-                        .foregroundColor(Color.textSecondary)
+                        .font(AppTheme.Fonts.inter(15, weight: .bold))
+                        .foregroundColor(Color.textPrimary)
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.3), value: person.amount)
                 }
@@ -266,57 +296,56 @@ struct MainView: View {
         }
     }
 
-    // MARK: - Add Person Row
-    private var addPersonRow: some View {
-        Button(action: { showingAddPerson = true }) {
-            HStack(spacing: 12) {
-                Circle()
-                    .fill(Color.appPrimary.opacity(0.1))
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(Color.appPrimary)
-                    )
-
-                Text("Add Person")
-                    .font(AppTheme.Fonts.inter(16, weight: .medium))
-                    .foregroundColor(Color.appPrimary)
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .background(Color.appSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
-
-    // MARK: - Adjustment Rows
-    @ViewBuilder
-    private var adjustmentRows: some View {
-        if !viewModel.adjustments.isEmpty {
-            VStack(spacing: 0) {
+    // MARK: - Extras Section (unified card)
+    // ✅ addExtraRow merged inside the card — same visual consistency as people card
+    private var extrasSectionCard: some View {
+        VStack(spacing: 0) {
+            if !viewModel.adjustments.isEmpty {
                 ForEach(Array(viewModel.adjustments.enumerated()), id: \.element.id) { index, adj in
                     VStack(spacing: 0) {
                         adjustmentRow(adj)
-                        if index < viewModel.adjustments.count - 1 {
-                            Divider().padding(.leading, 56)
-                        }
+                        Divider().padding(.leading, 56)
                     }
                 }
             }
-            .background(Color.appSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
-            .padding(.horizontal, 16)
+
+            // Add Extra menu — always last row inside the card
+            Menu {
+                Button { adjustmentPreset = AdjustmentSheetPreset(name: "Tax",      isDiscount: false) }
+                    label: { Label("Tax",      systemImage: "percent") }
+                Button { adjustmentPreset = AdjustmentSheetPreset(name: "Service",  isDiscount: false) }
+                    label: { Label("Service",  systemImage: "cart") }
+                Button { adjustmentPreset = AdjustmentSheetPreset(name: "Discount", isDiscount: true) }
+                    label: { Label("Discount", systemImage: "tag") }
+                Button { adjustmentPreset = AdjustmentSheetPreset(name: "Other",    isDiscount: false) }
+                    label: { Label("Other",    systemImage: "ellipsis.circle") }
+            } label: {
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(Color.appSecondary.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color.appSecondary)
+                        )
+                    Text("Add Extra")
+                        .font(AppTheme.Fonts.inter(16, weight: .medium))
+                        .foregroundColor(Color.appSecondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .contentShape(Rectangle())
+            }
         }
+        .background(Color.appSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+        .padding(.horizontal, 16)
     }
 
+    // MARK: - Adjustment Row
     private func adjustmentRow(_ adj: Adjustment) -> some View {
         HStack(spacing: 12) {
             Text(adj.isDiscount ? "−" : "+")
@@ -346,62 +375,38 @@ struct MainView: View {
         .padding(.vertical, 13)
     }
 
-    // MARK: - Add Extra Row (Menu)
-    private var addExtraRow: some View {
-        Menu {
-            Button { adjustmentPreset = AdjustmentSheetPreset(name: "Tax",      isDiscount: false) }
-                label: { Label("Tax",      systemImage: "percent") }
-            Button { adjustmentPreset = AdjustmentSheetPreset(name: "Service",  isDiscount: false) }
-                label: { Label("Service",  systemImage: "cart") }
-            Button { adjustmentPreset = AdjustmentSheetPreset(name: "Discount", isDiscount: true)  }
-                label: { Label("Discount", systemImage: "tag") }
-            Button { adjustmentPreset = AdjustmentSheetPreset(name: "Other",    isDiscount: false) }
-                label: { Label("Other",    systemImage: "ellipsis.circle") }
-        } label: {
-            HStack(spacing: 12) {
-                Circle()
-                    .fill(Color.appSecondary.opacity(0.1))
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(Color.appSecondary)
-                    )
-
-                Text("Add Extra")
-                    .font(AppTheme.Fonts.inter(16, weight: .medium))
-                    .foregroundColor(Color.appSecondary)
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .background(Color.appSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
-
     // MARK: - Sticky Bottom Bar
     private var calculateBar: some View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Total")
-                        .font(AppTheme.Fonts.inter(12, weight: .medium))
-                        .foregroundColor(Color.textSecondary)
-                    Text(viewModel.totalForSplit > 0 ? viewModel.totalForSplit.toCurrency() : "Rp 0")
-                        .font(AppTheme.Fonts.inter(17, weight: .bold))
-                        .foregroundColor(Color.textPrimary)
-                        .contentTransition(.numericText())
-                        .animation(.spring(response: 0.3), value: viewModel.totalForSplit)
+                    // ✅ Shows avg/person when people exist — removes duplicate total info
+                    // Shows plain total when no people yet (still useful context)
+                    if viewModel.people.isEmpty {
+                        Text("Total")
+                            .font(AppTheme.Fonts.inter(12, weight: .medium))
+                            .foregroundColor(Color.textSecondary)
+                        Text(viewModel.totalForSplit > 0 ? viewModel.totalForSplit.toCurrency() : "Rp 0")
+                            .font(AppTheme.Fonts.inter(17, weight: .bold))
+                            .foregroundColor(Color.textPrimary)
+                            .contentTransition(.numericText())
+                            .animation(.spring(response: 0.3), value: viewModel.totalForSplit)
+                    } else {
+                        Text("Avg per person")
+                            .font(AppTheme.Fonts.inter(12, weight: .medium))
+                            .foregroundColor(Color.textSecondary)
+                        Text(viewModel.averageAmount.toCurrency())
+                            .font(AppTheme.Fonts.inter(17, weight: .bold))
+                            .foregroundColor(Color.appPrimary)
+                            .contentTransition(.numericText())
+                            .animation(.spring(response: 0.3), value: viewModel.averageAmount)
+                    }
                 }
 
                 Spacer()
 
+                // ✅ "Split Bill" — more natural CTA than "Calculate"
                 Button(action: {
                     let history = BillHistory(
                         title: viewModel.billTitle,
@@ -412,7 +417,7 @@ struct MainView: View {
                     HistoryViewModel.shared.saveHistory(history)
                     navigateResult = true
                 }) {
-                    Text("Calculate")
+                    Text("Split Bill")
                         .font(AppTheme.Fonts.inter(16, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 28)
