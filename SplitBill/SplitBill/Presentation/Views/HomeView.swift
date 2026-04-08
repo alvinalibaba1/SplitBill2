@@ -164,13 +164,18 @@ struct HomeView: View {
                         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: totalOwed)
 
                     HStack(spacing: 4) {
-                        Text(viewModel.history.isEmpty
-                             ? "No bills yet"
-                             : "across \(viewModel.history.count) bill\(viewModel.history.count == 1 ? "" : "s")")
-                            .roundedFont(13, weight: .regular)
-                            .foregroundColor(Color.textSecondary)
-
-                        if !viewModel.history.isEmpty {
+                        if viewModel.history.isEmpty {
+                            Text("No bills yet")
+                                .roundedFont(13, weight: .regular)
+                                .foregroundColor(Color.textSecondary)
+                        } else if billsWithUnpaid == 0 {
+                            Text("All bills settled ✓")
+                                .roundedFont(13, weight: .medium)
+                                .foregroundColor(.green)
+                        } else {
+                            Text("across \(billsWithUnpaid) bill\(billsWithUnpaid == 1 ? "" : "s")")
+                                .roundedFont(13, weight: .regular)
+                                .foregroundColor(Color.textSecondary)
                             Text("· tap to see breakdown")
                                 .roundedFont(12, weight: .regular)
                                 .foregroundColor(Color.appPrimary.opacity(0.6))
@@ -202,8 +207,16 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
+    /// Sum of UNPAID people amounts across all bills (decreases as people are marked paid)
     private var totalOwed: Double {
-        viewModel.history.reduce(0) { $0 + $1.totalAmount }
+        viewModel.history.reduce(0) { total, bill in
+            total + bill.people.filter { !$0.isPaid }.reduce(0) { $0 + $1.amount }
+        }
+    }
+
+    /// Number of bills that still have at least one unpaid person
+    private var billsWithUnpaid: Int {
+        viewModel.history.filter { $0.people.contains { !$0.isPaid } }.count
     }
 
     // MARK: - Action Buttons

@@ -19,8 +19,11 @@ struct OweSummarySheet: View {
             .sorted { $0.date > $1.date }
     }
 
+    /// Only sum unpaid people amounts — decreases in real-time as people are marked paid
     private var totalOwed: Double {
-        history.reduce(0) { $0 + $1.totalAmount }
+        history.reduce(0) { total, bill in
+            total + bill.people.filter { !$0.isPaid }.reduce(0) { $0 + $1.amount }
+        }
     }
 
     // Unpaid people count across all bills
@@ -123,11 +126,12 @@ struct OweSummarySheet: View {
 
                 Spacer()
 
-                // Right side: amount + badge
+                // Right side: unpaid amount + badge
+                let unpaidTotal = unpaidPeople.reduce(0) { $0 + $1.amount }
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(bill.totalAmount.toCurrency())
+                    Text(allPaid ? bill.totalAmount.toCurrency() : unpaidTotal.toCurrency())
                         .roundedFont(15, weight: .bold)
-                        .foregroundColor(Color.textPrimary)
+                        .foregroundColor(allPaid ? Color.textSecondary : Color.textPrimary)
 
                     if allPaid {
                         Text("All paid ✓")
