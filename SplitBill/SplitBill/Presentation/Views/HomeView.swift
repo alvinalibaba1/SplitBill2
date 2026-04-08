@@ -16,7 +16,6 @@ struct HomeView: View {
     @Binding var selectedTab: Int
 
     @State private var showCamera = false
-    @State private var showSettings = false
     @State private var showOweSummary = false
     @State private var haptics = UIImpactFeedbackGenerator(style: .medium)
 
@@ -37,9 +36,6 @@ struct HomeView: View {
         }
         .navigationTitle("")
         .navigationBarHidden(true)
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
-        }
         .sheet(isPresented: $showCamera) {
             BillCameraView { image in
                 processImage(image)
@@ -100,8 +96,11 @@ struct HomeView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                // Profile avatar — opens Settings
-                Button(action: { showSettings = true }) {
+                // Profile avatar — switches to Profile tab
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    selectedTab = 3
+                }) {
                     Circle()
                         .fill(Color.appPrimary.opacity(0.12))
                         .frame(width: 42, height: 42)

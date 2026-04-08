@@ -14,6 +14,7 @@ struct TabBarView: View {
     @StateObject private var homeRouter    = NavigationRouter()
     @StateObject private var statsRouter   = NavigationRouter()
     @StateObject private var historyRouter = NavigationRouter()
+    @StateObject private var profileRouter = NavigationRouter()
 
     var body: some View {
         ZStack {
@@ -54,6 +55,17 @@ struct TabBarView: View {
                     Text("History")
                 }
                 .tag(2)
+
+                // MARK: - Profile Tab
+                NavigationStack(path: $profileRouter.path) {
+                    ProfileView()
+                }
+                .environmentObject(profileRouter)
+                .tabItem {
+                    Image(systemName: selectedTab == 3 ? "person.fill" : "person")
+                    Text("Profile")
+                }
+                .tag(3)
             }
             .tint(Color.appPrimary)
 
