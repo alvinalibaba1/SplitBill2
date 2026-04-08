@@ -4,8 +4,28 @@
 //
 
 import SwiftUI
+import PhotosUI
 
-// MARK: - Data
+// MARK: - Profile Image Helper
+
+enum ProfileImageStore {
+    static var url: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("profileImage.jpg")
+    }
+
+    static func save(_ image: UIImage) {
+        if let data = image.jpegData(compressionQuality: 0.85) {
+            try? data.write(to: url)
+        }
+    }
+
+    static func load() -> UIImage? {
+        UIImage(contentsOfFile: url.path)
+    }
+}
+
+// MARK: - Onboarding Page Data
 
 private struct OnboardingPageData {
     let icon: String
@@ -39,6 +59,9 @@ private let onboardingPages: [OnboardingPageData] = [
     )
 ]
 
+private let totalPages = onboardingPages.count + 1   // +1 for profile setup page
+private let profilePageIndex = onboardingPages.count  // = 3
+
 // MARK: - OnboardingView
 
 struct OnboardingView: View {
@@ -52,23 +75,23 @@ struct OnboardingView: View {
 
             VStack(spacing: 0) {
 
-                // Skip button
+                // Skip button — hidden on profile page
                 HStack {
                     Spacer()
                     Button("Skip") {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            currentPage = onboardingPages.count - 1
+                            currentPage = profilePageIndex
                         }
                     }
                     .font(AppTheme.Fonts.inter(15, weight: .medium))
                     .foregroundColor(Color.textSecondary)
-                    .opacity(currentPage < onboardingPages.count - 1 ? 1 : 0)
+                    .opacity(currentPage < profilePageIndex ? 1 : 0)
                     .animation(.easeInOut(duration: 0.2), value: currentPage)
                 }
                 .frame(height: 44)
                 .padding(.horizontal, 28)
 
-                // Swipeable pages
+                // Pages
                 TabView(selection: $currentPage) {
                     ForEach(onboardingPages.indices, id: \.self) { i in
                         OnboardingPageView(
@@ -77,24 +100,28 @@ struct OnboardingView: View {
                         )
                         .tag(i)
                     }
+
+                    // Profile Setup Page
+                    ProfileSetupPageView(isActive: currentPage == profilePageIndex)
+                        .tag(profilePageIndex)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(response: 0.45, dampingFraction: 0.82), value: currentPage)
 
                 // Dot indicators
                 HStack(spacing: 8) {
-                    ForEach(onboardingPages.indices, id: \.self) { i in
+                    ForEach(0 ..< totalPages, id: \.self) { i in
                         Capsule()
                             .fill(i == currentPage ? Color.appPrimary : Color.appPrimary.opacity(0.2))
                             .frame(width: i == currentPage ? 28 : 8, height: 8)
                             .animation(.spring(response: 0.38, dampingFraction: 0.68), value: currentPage)
                     }
                 }
-                .padding(.bottom, 36)
+                .padding(.bottom, 32)
 
                 // Next / Get Started button
                 Button(action: advance) {
-                    Text(currentPage < onboardingPages.count - 1 ? "Next" : "Get Started")
+                    Text(currentPage < profilePageIndex ? "Next" : "Get Started →")
                 }
                 .primaryButtonStyle()
                 .padding(.horizontal, 28)
@@ -104,7 +131,7 @@ struct OnboardingView: View {
     }
 
     private func advance() {
-        if currentPage < onboardingPages.count - 1 {
+        if currentPage < profilePageIndex {
             withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
                 currentPage += 1
             }
@@ -116,7 +143,7 @@ struct OnboardingView: View {
     }
 }
 
-// MARK: - Page Content
+// MARK: - Existing Info Page
 
 private struct OnboardingPageView: View {
 
@@ -133,18 +160,13 @@ private struct OnboardingPageView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Floating icon card
             ZStack {
-                // Soft outer ring
                 Circle()
                     .fill(page.iconBg.opacity(0.5))
                     .frame(width: 160, height: 160)
-
-                // Inner circle
                 Circle()
                     .fill(page.iconBg)
                     .frame(width: 120, height: 120)
-
                 Image(systemName: page.icon)
                     .font(AppTheme.Fonts.inter(50, weight: .medium))
                     .foregroundColor(page.iconFg)
@@ -155,7 +177,6 @@ private struct OnboardingPageView: View {
 
             Spacer().frame(height: 52)
 
-            // Text block
             VStack(spacing: 14) {
                 Text(page.title)
                     .font(AppTheme.Fonts.inter(30, weight: .bold))
@@ -177,29 +198,271 @@ private struct OnboardingPageView: View {
         .onChange(of: isActive) { _, active in
             if active { animateIn() } else { reset() }
         }
-        .onAppear {
-            if isActive { animateIn() }
-        }
+        .onAppear { if isActive { animateIn() } }
     }
 
     private func animateIn() {
         withAnimation(.spring(response: 0.52, dampingFraction: 0.62).delay(0.04)) {
-            iconScale = 1
-            iconOpacity = 1
-            iconRotation = 0
+            iconScale = 1; iconOpacity = 1; iconRotation = 0
         }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.72).delay(0.16)) {
-            textOffset = 0
-            textOpacity = 1
+            textOffset = 0; textOpacity = 1
         }
     }
 
     private func reset() {
-        iconScale = 0.55
-        iconOpacity = 0
-        iconRotation = -8
-        textOffset = 28
-        textOpacity = 0
+        iconScale = 0.55; iconOpacity = 0; iconRotation = -8
+        textOffset = 28; textOpacity = 0
+    }
+}
+
+// MARK: - Profile Setup Page
+
+private struct ProfileSetupPageView: View {
+
+    let isActive: Bool
+
+    @AppStorage("userName")          private var userName          = ""
+    @AppStorage("userBio")           private var userBio           = ""
+    @AppStorage("bankName")          private var bankName          = ""
+    @AppStorage("bankAccountNumber") private var bankAccountNumber = ""
+    @AppStorage("bankAccountName")   private var bankAccountName   = ""
+
+    @State private var profileImage: UIImage? = ProfileImageStore.load()
+    @State private var photoItem: PhotosPickerItem? = nil
+
+    @State private var contentOpacity: Double  = 0
+    @State private var contentOffset: CGFloat  = 32
+
+    @FocusState private var focusedField: ProfileField?
+
+    enum ProfileField { case name, bio, bankName, bankNumber, bankAccountName }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 28) {
+
+                // Header
+                VStack(spacing: 8) {
+                    Text("Set Up Your Profile")
+                        .font(AppTheme.Fonts.inter(28, weight: .bold))
+                        .foregroundColor(Color.textPrimary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Add your info so others know who to pay back.")
+                        .font(AppTheme.Fonts.inter(15, weight: .regular))
+                        .foregroundColor(Color.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+
+                // Avatar picker
+                PhotosPicker(selection: $photoItem, matching: .images) {
+                    ZStack(alignment: .bottomTrailing) {
+                        // Avatar circle
+                        Group {
+                            if let img = profileImage {
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                ZStack {
+                                    Color.appPrimary.opacity(0.1)
+                                    if userName.isEmpty {
+                                        Image(systemName: "person.fill")
+                                            .font(AppTheme.Fonts.inter(44, weight: .medium))
+                                            .foregroundColor(Color.appPrimary.opacity(0.5))
+                                    } else {
+                                        Text(String(userName.prefix(1)).uppercased())
+                                            .font(AppTheme.Fonts.inter(52, weight: .bold))
+                                            .foregroundColor(Color.appPrimary)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(width: 110, height: 110)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.appPrimary.opacity(0.15), lineWidth: 2))
+
+                        // Camera badge
+                        ZStack {
+                            Circle()
+                                .fill(Color.appPrimary)
+                                .frame(width: 34, height: 34)
+                                .shadow(color: Color.appPrimary.opacity(0.4), radius: 6, y: 2)
+                            Image(systemName: "camera.fill")
+                                .font(AppTheme.Fonts.inter(14, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .offset(x: 4, y: 4)
+                    }
+                }
+                .buttonStyle(.plain)
+                .onChange(of: photoItem) { _, item in
+                    Task {
+                        if let data = try? await item?.loadTransferable(type: Data.self),
+                           let img = UIImage(data: data) {
+                            await MainActor.run {
+                                profileImage = img
+                                ProfileImageStore.save(img)
+                            }
+                        }
+                    }
+                }
+
+                // Form fields
+                VStack(spacing: 16) {
+
+                    // Personal info
+                    formSection(title: "PERSONAL") {
+                        formField(
+                            icon: "person.fill",
+                            iconColor: Color.appPrimary,
+                            placeholder: "Your name",
+                            text: $userName,
+                            field: .name,
+                            keyboard: .default
+                        )
+
+                        Divider().padding(.leading, 52)
+
+                        formField(
+                            icon: "text.quote",
+                            iconColor: Color.appSecondary,
+                            placeholder: "Short bio (optional)",
+                            text: $userBio,
+                            field: .bio,
+                            keyboard: .default
+                        )
+                    }
+
+                    // Bank info
+                    formSection(title: "PAYMENT INFO") {
+                        formField(
+                            icon: "building.columns.fill",
+                            iconColor: Color(hex: "F59E0B"),
+                            placeholder: "Bank name (e.g. BCA, Mandiri)",
+                            text: $bankName,
+                            field: .bankName,
+                            keyboard: .default
+                        )
+
+                        Divider().padding(.leading, 52)
+
+                        formField(
+                            icon: "creditcard.fill",
+                            iconColor: Color(hex: "8B5CF6"),
+                            placeholder: "Account number",
+                            text: $bankAccountNumber,
+                            field: .bankNumber,
+                            keyboard: .numberPad
+                        )
+
+                        Divider().padding(.leading, 52)
+
+                        formField(
+                            icon: "person.text.rectangle.fill",
+                            iconColor: Color(hex: "10B981"),
+                            placeholder: "Account holder name",
+                            text: $bankAccountName,
+                            field: .bankAccountName,
+                            keyboard: .default
+                        )
+                    }
+                }
+
+                // You can skip hint
+                Text("You can update this anytime in Profile")
+                    .font(AppTheme.Fonts.inter(13, weight: .regular))
+                    .foregroundColor(Color.textSecondary.opacity(0.6))
+                    .padding(.bottom, 8)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+        .opacity(contentOpacity)
+        .offset(y: contentOffset)
+        .onChange(of: isActive) { _, active in
+            if active { animateIn() } else { reset() }
+        }
+        .onAppear { if isActive { animateIn() } }
+        .onTapGesture { focusedField = nil }
+    }
+
+    // MARK: - Form Section
+
+    @ViewBuilder
+    private func formSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(AppTheme.Fonts.inter(11, weight: .semibold))
+                .foregroundColor(Color.textSecondary)
+                .tracking(0.8)
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(Color.appSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
+        }
+    }
+
+    // MARK: - Form Field
+
+    @ViewBuilder
+    private func formField(
+        icon: String,
+        iconColor: Color,
+        placeholder: String,
+        text: Binding<String>,
+        field: ProfileField,
+        keyboard: UIKeyboardType
+    ) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(iconColor.opacity(0.12))
+                    .frame(width: 36, height: 36)
+                Image(systemName: icon)
+                    .font(AppTheme.Fonts.inter(15, weight: .medium))
+                    .foregroundColor(iconColor)
+            }
+
+            TextField(placeholder, text: text)
+                .font(AppTheme.Fonts.inter(15, weight: .regular))
+                .foregroundColor(Color.textPrimary)
+                .keyboardType(keyboard)
+                .focused($focusedField, equals: field)
+                .submitLabel(field == .bankAccountName ? .done : .next)
+                .onSubmit {
+                    switch field {
+                    case .name:            focusedField = .bio
+                    case .bio:             focusedField = .bankName
+                    case .bankName:        focusedField = .bankNumber
+                    case .bankNumber:      focusedField = .bankAccountName
+                    case .bankAccountName: focusedField = nil
+                    }
+                }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+    }
+
+    // MARK: - Animation
+
+    private func animateIn() {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.08)) {
+            contentOpacity = 1
+            contentOffset  = 0
+        }
+    }
+
+    private func reset() {
+        contentOpacity = 0
+        contentOffset  = 32
     }
 }
 

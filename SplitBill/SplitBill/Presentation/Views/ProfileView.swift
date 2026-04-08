@@ -4,16 +4,22 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct ProfileView: View {
 
-    @AppStorage("userName") private var userName = ""
+    @AppStorage("userName")          private var userName          = ""
+    @AppStorage("userBio")           private var userBio           = ""
+    @AppStorage("bankName")          private var bankName          = ""
+    @AppStorage("bankAccountNumber") private var bankAccountNumber = ""
+    @AppStorage("bankAccountName")   private var bankAccountName   = ""
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = true
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
 
+    @State private var profileImage: UIImage? = ProfileImageStore.load()
+    @State private var photoItem: PhotosPickerItem? = nil
     @State private var showResetConfirm = false
-    @FocusState private var nameFocused: Bool
 
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
 
@@ -31,27 +37,88 @@ struct ProfileView: View {
                 VStack(spacing: 0) {
 
                     // MARK: - Avatar + Name
-                    VStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.appPrimary.opacity(0.12))
-                            .frame(width: 88, height: 88)
-                            .overlay(
+                    VStack(spacing: 14) {
+                        PhotosPicker(selection: $photoItem, matching: .images) {
+                            ZStack(alignment: .bottomTrailing) {
+                                // Avatar
                                 Group {
-                                    if userName.isEmpty {
-                                        Image(systemName: "person.fill")
-                                            .font(AppTheme.Fonts.inter(42, weight: .medium))
-                                            .foregroundColor(Color.appPrimary)
+                                    if let img = profileImage {
+                                        Image(uiImage: img)
+                                            .resizable()
+                                            .scaledToFill()
                                     } else {
-                                        Text(String(userName.prefix(1)).uppercased())
-                                            .roundedFont(38, weight: .bold)
-                                            .foregroundColor(Color.appPrimary)
+                                        ZStack {
+                                            Color.appPrimary.opacity(0.12)
+                                            if userName.isEmpty {
+                                                Image(systemName: "person.fill")
+                                                    .font(AppTheme.Fonts.inter(42, weight: .medium))
+                                                    .foregroundColor(Color.appPrimary)
+                                            } else {
+                                                Text(String(userName.prefix(1)).uppercased())
+                                                    .roundedFont(40, weight: .bold)
+                                                    .foregroundColor(Color.appPrimary)
+                                            }
+                                        }
                                     }
                                 }
-                            )
+                                .frame(width: 96, height: 96)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.appPrimary.opacity(0.15), lineWidth: 2))
 
-                        Text(userName.isEmpty ? "Tap to set your name" : userName)
-                            .roundedFont(20, weight: .bold)
-                            .foregroundColor(userName.isEmpty ? Color.textSecondary : Color.textPrimary)
+                                // Camera badge
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.appPrimary)
+                                        .frame(width: 30, height: 30)
+                                        .shadow(color: Color.appPrimary.opacity(0.35), radius: 5, y: 2)
+                                    Image(systemName: "camera.fill")
+                                        .font(AppTheme.Fonts.inter(13, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
+                                .offset(x: 3, y: 3)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .onChange(of: photoItem) { _, item in
+                            Task {
+                                if let data = try? await item?.loadTransferable(type: Data.self),
+                                   let img = UIImage(data: data) {
+                                    await MainActor.run {
+                                        profileImage = img
+                                        ProfileImageStore.save(img)
+                                    }
+                                }
+                            }
+                        }
+
+                        VStack(spacing: 4) {
+                            Text(userName.isEmpty ? "Set Your Name" : userName)
+                                .roundedFont(22, weight: .bold)
+                                .foregroundColor(userName.isEmpty ? Color.textSecondary : Color.textPrimary)
+
+                            if !userBio.isEmpty {
+                                Text(userBio)
+                                    .roundedFont(14, weight: .regular)
+                                    .foregroundColor(Color.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                            }
+
+                            if !bankName.isEmpty && !bankAccountNumber.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "building.columns.fill")
+                                        .font(AppTheme.Fonts.inter(11))
+                                        .foregroundColor(Color.appPrimary.opacity(0.7))
+                                    Text("\(bankName) · \(bankAccountNumber)")
+                                        .roundedFont(12, weight: .medium)
+                                        .foregroundColor(Color.textSecondary)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(Color.appPrimary.opacity(0.08))
+                                .clipShape(Capsule())
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 24)
@@ -76,24 +143,64 @@ struct ProfileView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
 
-                    // MARK: - Profile Section
-                    sectionHeader("PROFILE")
+                    // MARK: - Personal Section
+                    sectionHeader("PERSONAL")
 
                     VStack(spacing: 0) {
-                        HStack {
-                            Label("Name", systemImage: "person.circle")
-                                .font(AppTheme.Fonts.inter(16, weight: .regular))
-                                .foregroundColor(Color.textPrimary)
-                            Spacer()
-                            TextField("Enter your name", text: $userName)
-                                .font(AppTheme.Fonts.inter(16, weight: .regular))
+                        settingsRow(icon: "person.fill", iconColor: Color.appPrimary, title: "Name") {
+                            TextField("Your name", text: $userName)
+                                .font(AppTheme.Fonts.inter(15, weight: .regular))
                                 .foregroundColor(Color.textSecondary)
                                 .multilineTextAlignment(.trailing)
-                                .focused($nameFocused)
+                                .submitLabel(.next)
+                        }
+
+                        Divider().padding(.leading, 52)
+
+                        settingsRow(icon: "text.quote", iconColor: Color.appSecondary, title: "Bio") {
+                            TextField("Short bio", text: $userBio)
+                                .font(AppTheme.Fonts.inter(15, weight: .regular))
+                                .foregroundColor(Color.textSecondary)
+                                .multilineTextAlignment(.trailing)
                                 .submitLabel(.done)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 15)
+                    }
+                    .background(Color.appSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+                    .padding(.horizontal, 16)
+
+                    // MARK: - Payment Info Section
+                    sectionHeader("PAYMENT INFO")
+
+                    VStack(spacing: 0) {
+                        settingsRow(icon: "building.columns.fill", iconColor: Color(hex: "F59E0B"), title: "Bank") {
+                            TextField("e.g. BCA, Mandiri", text: $bankName)
+                                .font(AppTheme.Fonts.inter(15, weight: .regular))
+                                .foregroundColor(Color.textSecondary)
+                                .multilineTextAlignment(.trailing)
+                                .submitLabel(.next)
+                        }
+
+                        Divider().padding(.leading, 52)
+
+                        settingsRow(icon: "creditcard.fill", iconColor: Color(hex: "8B5CF6"), title: "Account No.") {
+                            TextField("Account number", text: $bankAccountNumber)
+                                .font(AppTheme.Fonts.inter(15, weight: .regular))
+                                .foregroundColor(Color.textSecondary)
+                                .multilineTextAlignment(.trailing)
+                                .keyboardType(.numberPad)
+                        }
+
+                        Divider().padding(.leading, 52)
+
+                        settingsRow(icon: "person.text.rectangle.fill", iconColor: Color(hex: "10B981"), title: "Account Name") {
+                            TextField("Holder name", text: $bankAccountName)
+                                .font(AppTheme.Fonts.inter(15, weight: .regular))
+                                .foregroundColor(Color.textSecondary)
+                                .multilineTextAlignment(.trailing)
+                                .submitLabel(.done)
+                        }
                     }
                     .background(Color.appSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -113,7 +220,6 @@ struct ProfileView: View {
                         Divider().padding(.leading, 52)
 
                         Button(action: {
-                            // Open App Store link
                             if let url = URL(string: "itms-apps://itunes.apple.com/app/id") {
                                 UIApplication.shared.open(url)
                             }
@@ -164,7 +270,7 @@ struct ProfileView: View {
                     .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
                     .padding(.horizontal, 16)
 
-                    // MARK: - Footer
+                    // Footer
                     Text("Made with ♥ by Alvin")
                         .font(AppTheme.Fonts.inter(13, weight: .regular))
                         .foregroundColor(Color.textSecondary.opacity(0.5))
@@ -175,7 +281,6 @@ struct ProfileView: View {
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .onTapGesture { nameFocused = false }
         .confirmationDialog(
             "This will restart the onboarding flow.",
             isPresented: $showResetConfirm,
