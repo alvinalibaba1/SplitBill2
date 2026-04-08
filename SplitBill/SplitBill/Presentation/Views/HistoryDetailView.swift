@@ -217,7 +217,7 @@ struct HistoryDetailView: View {
             }) {
                 if justMarkedId == person.id {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 22))
+                        .font(AppTheme.Fonts.inter(22))
                         .foregroundColor(.green)
                         .transition(.scale.combined(with: .opacity))
                 } else if isPaidSection {

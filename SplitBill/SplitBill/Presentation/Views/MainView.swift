@@ -102,7 +102,7 @@ struct MainView: View {
                 .symbolEffect(.bounce, value: isPulsing)
                 .onAppear { isPulsing.toggle() }
                 .foregroundColor(Color.appSecondary)
-                .font(.system(size: 16))
+                .font(AppTheme.Fonts.inter(16))
 
             Text("\(viewModel.scannedItems.count) items ready — tap a person below to assign them")
                 .font(AppTheme.Fonts.inter(13, weight: .medium))
@@ -199,7 +199,7 @@ struct MainView: View {
                 // Empty hint — first-time user guidance
                 HStack(spacing: 10) {
                     Image(systemName: "person.2")
-                        .font(.system(size: 18))
+                        .font(AppTheme.Fonts.inter(18))
                         .foregroundColor(Color.textSecondary.opacity(0.35))
                     Text("Add people to start splitting")
                         .font(AppTheme.Fonts.inter(14, weight: .regular))
@@ -226,7 +226,7 @@ struct MainView: View {
                         .frame(width: 36, height: 36)
                         .overlay(
                             Image(systemName: "plus")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(AppTheme.Fonts.inter(13, weight: .bold))
                                 .foregroundColor(Color.appPrimary)
                         )
                     Text("Add Person")
@@ -275,7 +275,7 @@ struct MainView: View {
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppTheme.Fonts.inter(12, weight: .semibold))
                     .foregroundColor(Color.textSecondary.opacity(0.3))
             }
             .padding(.horizontal, 16)
@@ -326,7 +326,7 @@ struct MainView: View {
                         .frame(width: 36, height: 36)
                         .overlay(
                             Image(systemName: "plus")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(AppTheme.Fonts.inter(13, weight: .bold))
                                 .foregroundColor(Color.appSecondary)
                         )
                     Text("Add Extra")
@@ -367,7 +367,7 @@ struct MainView: View {
 
             Button(action: { viewModel.removeAdjustment(id: adj.id) }) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
+                    .font(AppTheme.Fonts.inter(18))
                     .foregroundColor(Color.textSecondary.opacity(0.3))
             }
         }

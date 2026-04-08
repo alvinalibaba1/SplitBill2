@@ -76,7 +76,7 @@ struct ResultView: View {
                     .opacity(showCheckmark ? 1 : 0)
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 34, weight: .bold))
+                    .font(AppTheme.Fonts.inter(34, weight: .bold))
                     .foregroundColor(.white)
                     .scaleEffect(showCheckmark ? 1 : 0.3)
                     .opacity(showCheckmark ? 1 : 0)
@@ -259,7 +259,7 @@ struct ResultView: View {
                 Button(action: copyAction) {
                     HStack(spacing: 6) {
                         Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(AppTheme.Fonts.inter(13, weight: .semibold))
                         Text(showCopied ? "Copied!" : "Copy")
                             .font(AppTheme.Fonts.inter(14, weight: .semibold))
                     }
@@ -279,7 +279,7 @@ struct ResultView: View {
                 Button(action: shareAction) {
                     HStack(spacing: 6) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(AppTheme.Fonts.inter(13, weight: .semibold))
                         Text("Share")
                             .font(AppTheme.Fonts.inter(14, weight: .semibold))
                     }

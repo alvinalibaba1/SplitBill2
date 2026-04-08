@@ -65,7 +65,7 @@ struct LoadingSpinner: View {
                 }
 
             Image(systemName: "doc.text.viewfinder")
-                .font(.system(size: 32, weight: .semibold))
+                .font(AppTheme.Fonts.inter(32, weight: .semibold))
                 .foregroundColor(.green)
         }
     }

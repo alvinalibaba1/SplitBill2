@@ -18,7 +18,7 @@ struct HistoryView: View {
             if viewModel.history.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 64))
+                        .font(AppTheme.Fonts.inter(64))
                         .foregroundColor(Color.textSecondary.opacity(0.3))
 
                     Text("No History Yet")
@@ -115,7 +115,7 @@ struct HistoryCardView: View {
                 avatarStack
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppTheme.Fonts.inter(12, weight: .semibold))
                     .foregroundColor(Color.textSecondary.opacity(0.35))
             }
         }

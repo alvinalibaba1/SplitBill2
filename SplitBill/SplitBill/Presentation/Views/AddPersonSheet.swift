@@ -41,7 +41,7 @@ struct AddPersonSheet: View {
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
                     Image(systemName: "person.fill")
-                        .font(.system(size: 16))
+                        .font(AppTheme.Fonts.inter(16))
                         .foregroundColor(isFocused ? Color.appPrimary : Color.textSecondary.opacity(0.5))
                         .animation(.easeInOut(duration: 0.2), value: isFocused)
 
@@ -95,7 +95,7 @@ struct AddPersonSheet: View {
                         ForEach(addedNames, id: \.self) { personName in
                             HStack(spacing: 5) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 12))
+                                    .font(AppTheme.Fonts.inter(12))
                                     .foregroundColor(Color.appPrimary)
                                 Text(personName)
                                     .font(AppTheme.Fonts.inter(13, weight: .medium))

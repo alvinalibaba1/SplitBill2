@@ -105,7 +105,7 @@ struct OweSummarySheet: View {
                         .frame(width: 48, height: 48)
 
                     Image(systemName: allPaid ? "checkmark.seal.fill" : "doc.text.fill")
-                        .font(.system(size: 20))
+                        .font(AppTheme.Fonts.inter(20))
                         .foregroundColor(allPaid ? .green : Color.appPrimary)
                 }
 
@@ -145,7 +145,7 @@ struct OweSummarySheet: View {
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppTheme.Fonts.inter(12, weight: .semibold))
                     .foregroundColor(Color.textSecondary.opacity(0.35))
             }
             .padding(.horizontal, 16)
@@ -168,7 +168,7 @@ struct OweSummarySheet: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 48))
+                .font(AppTheme.Fonts.inter(48))
                 .foregroundColor(Color.textSecondary.opacity(0.3))
 
             Text("No bills yet")

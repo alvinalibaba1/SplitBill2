@@ -31,7 +31,7 @@ struct SettingsView: View {
                                 .frame(width: 80, height: 80)
                                 .overlay(
                                     Image(systemName: "person.fill")
-                                        .font(.system(size: 38, weight: .medium))
+                                        .font(AppTheme.Fonts.inter(38, weight: .medium))
                                         .foregroundColor(Color.appPrimary)
                                 )
 
@@ -80,7 +80,7 @@ struct SettingsView: View {
 
                             settingsRow(icon: "star.fill", iconColor: Color(hex: "F59E0B"), title: "Rate SplitBill") {
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                     .foregroundColor(Color.textSecondary.opacity(0.4))
                             }
 
@@ -88,7 +88,7 @@ struct SettingsView: View {
 
                             settingsRow(icon: "envelope.fill", iconColor: Color.appSecondary, title: "Send Feedback") {
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                     .foregroundColor(Color.textSecondary.opacity(0.4))
                             }
                         }
@@ -104,7 +104,7 @@ struct SettingsView: View {
                             Button(action: { showResetConfirm = true }) {
                                 settingsRow(icon: "arrow.counterclockwise", iconColor: Color.orange, title: "Replay Onboarding") {
                                     Image(systemName: "chevron.right")
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                         .foregroundColor(Color.textSecondary.opacity(0.4))
                                 }
                             }
@@ -175,7 +175,7 @@ struct SettingsView: View {
                 .frame(width: 36, height: 36)
                 .overlay(
                     Image(systemName: icon)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(AppTheme.Fonts.inter(16, weight: .medium))
                         .foregroundColor(iconColor)
                 )
 

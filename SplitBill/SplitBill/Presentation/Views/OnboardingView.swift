@@ -146,7 +146,7 @@ private struct OnboardingPageView: View {
                     .frame(width: 120, height: 120)
 
                 Image(systemName: page.icon)
-                    .font(.system(size: 50, weight: .medium))
+                    .font(AppTheme.Fonts.inter(50, weight: .medium))
                     .foregroundColor(page.iconFg)
             }
             .scaleEffect(iconScale)

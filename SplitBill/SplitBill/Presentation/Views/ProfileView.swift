@@ -39,7 +39,7 @@ struct ProfileView: View {
                                 Group {
                                     if userName.isEmpty {
                                         Image(systemName: "person.fill")
-                                            .font(.system(size: 42, weight: .medium))
+                                            .font(AppTheme.Fonts.inter(42, weight: .medium))
                                             .foregroundColor(Color.appPrimary)
                                     } else {
                                         Text(String(userName.prefix(1)).uppercased())
@@ -120,7 +120,7 @@ struct ProfileView: View {
                         }) {
                             settingsRow(icon: "star.fill", iconColor: Color(hex: "F59E0B"), title: "Rate Splitzy") {
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                     .foregroundColor(Color.textSecondary.opacity(0.4))
                             }
                         }
@@ -135,7 +135,7 @@ struct ProfileView: View {
                         }) {
                             settingsRow(icon: "envelope.fill", iconColor: Color.appSecondary, title: "Send Feedback") {
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                     .foregroundColor(Color.textSecondary.opacity(0.4))
                             }
                         }
@@ -153,7 +153,7 @@ struct ProfileView: View {
                         Button(action: { showResetConfirm = true }) {
                             settingsRow(icon: "arrow.counterclockwise", iconColor: Color.orange, title: "Replay Onboarding") {
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                     .foregroundColor(Color.textSecondary.opacity(0.4))
                             }
                         }
@@ -230,7 +230,7 @@ struct ProfileView: View {
                 .frame(width: 36, height: 36)
                 .overlay(
                     Image(systemName: icon)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(AppTheme.Fonts.inter(16, weight: .medium))
                         .foregroundColor(iconColor)
                 )
 

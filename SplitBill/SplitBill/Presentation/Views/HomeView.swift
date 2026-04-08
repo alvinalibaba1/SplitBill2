@@ -106,7 +106,7 @@ struct HomeView: View {
                         .frame(width: 42, height: 42)
                         .overlay(
                             Image(systemName: "person.fill")
-                                .font(.system(size: 20, weight: .medium))
+                                .font(AppTheme.Fonts.inter(20, weight: .medium))
                                 .foregroundColor(Color.appPrimary)
                         )
                 }
@@ -122,7 +122,7 @@ struct HomeView: View {
                             .frame(width: 42, height: 42)
                             .overlay(
                                 Image(systemName: "bell.fill")
-                                    .font(.system(size: 18, weight: .medium))
+                                    .font(AppTheme.Fonts.inter(18, weight: .medium))
                                     .foregroundColor(Color.appPrimary)
                             )
 
@@ -185,7 +185,7 @@ struct HomeView: View {
                         .fill(Color.appPrimary.opacity(0.1))
                         .frame(width: 56, height: 56)
                     Image(systemName: "person.2.fill")
-                        .font(.system(size: 22))
+                        .font(AppTheme.Fonts.inter(22))
                         .foregroundColor(Color.appPrimary)
                 }
             }
@@ -257,7 +257,7 @@ struct HomeView: View {
             if viewModel.history.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "list.clipboard")
-                        .font(.system(size: 44))
+                        .font(AppTheme.Fonts.inter(44))
                         .foregroundColor(Color.textSecondary.opacity(0.3))
 
                     Text("No splits yet")

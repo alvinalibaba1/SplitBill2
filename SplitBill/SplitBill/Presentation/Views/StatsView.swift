@@ -127,7 +127,7 @@ struct StatsView: View {
                     .fill(iconColor.opacity(0.12))
                     .frame(width: 40, height: 40)
                 Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
+                    .font(AppTheme.Fonts.inter(18, weight: .medium))
                     .foregroundColor(iconColor)
             }
 
@@ -272,7 +272,7 @@ struct StatsView: View {
                     Spacer()
                     Image(systemName: "trophy.fill")
                         .foregroundColor(Color(hex: "F59E0B"))
-                        .font(.system(size: 16))
+                        .font(AppTheme.Fonts.inter(16))
                 }
 
                 Button(action: { router.push(.historyDetail(bill)) }) {
@@ -282,7 +282,7 @@ struct StatsView: View {
                                 .fill(Color.appSecondary.opacity(0.12))
                                 .frame(width: 44, height: 44)
                             Image(systemName: "doc.text.fill")
-                                .font(.system(size: 18))
+                                .font(AppTheme.Fonts.inter(18))
                                 .foregroundColor(Color.appSecondary)
                         }
 
@@ -302,7 +302,7 @@ struct StatsView: View {
                             .foregroundColor(Color.appPrimary)
 
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(AppTheme.Fonts.inter(12, weight: .semibold))
                             .foregroundColor(Color.textSecondary.opacity(0.4))
                     }
                     .padding(12)
@@ -323,7 +323,7 @@ struct StatsView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 52))
+                .font(AppTheme.Fonts.inter(52))
                 .foregroundColor(Color.textSecondary.opacity(0.2))
             Text("No data yet")
                 .font(AppTheme.Fonts.inter(18, weight: .semibold))

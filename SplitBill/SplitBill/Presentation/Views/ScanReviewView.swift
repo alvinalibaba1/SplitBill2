@@ -33,7 +33,7 @@ struct ScanReviewView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundColor(Color.appSecondary)
-                            .font(.system(size: 15))
+                            .font(AppTheme.Fonts.inter(15))
                         Text("Tap an item to edit, swipe to delete, or add missing ones.")
                             .font(AppTheme.Fonts.inter(13, weight: .medium))
                             .foregroundColor(Color.appSecondary)
@@ -168,12 +168,12 @@ struct ScanReviewView: View {
                     .foregroundColor(Color.textSecondary)
 
                 Image(systemName: "pencil")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(AppTheme.Fonts.inter(13, weight: .medium))
                     .foregroundColor(Color.textSecondary.opacity(0.4))
 
                 Button(action: { deleteItem(at: index) }) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 18))
+                        .font(AppTheme.Fonts.inter(18))
                         .foregroundColor(Color.textSecondary.opacity(0.3))
                 }
             }
@@ -194,7 +194,7 @@ struct ScanReviewView: View {
                     .frame(width: 36, height: 36)
                     .overlay(
                         Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(AppTheme.Fonts.inter(13, weight: .bold))
                             .foregroundColor(Color.appPrimary)
                     )
                 Text("Add Item")
@@ -222,7 +222,7 @@ struct ScanReviewView: View {
                 .foregroundColor(Color.textSecondary)
             Button(action: { deleteAdjustment(at: index) }) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
+                    .font(AppTheme.Fonts.inter(18))
                     .foregroundColor(Color.textSecondary.opacity(0.3))
             }
         }
@@ -235,7 +235,7 @@ struct ScanReviewView: View {
     private var emptyItemsState: some View {
         VStack(spacing: 10) {
             Image(systemName: "cart")
-                .font(.system(size: 36))
+                .font(AppTheme.Fonts.inter(36))
                 .foregroundColor(Color.textSecondary.opacity(0.25))
             Text("No items detected")
                 .font(AppTheme.Fonts.inter(14, weight: .medium))

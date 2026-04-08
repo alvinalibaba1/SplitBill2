@@ -136,7 +136,7 @@ struct PersonDetailView: View {
                             Button(action: { assign(scannedItemAt: index) }) {
                                 HStack(spacing: 5) {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 14))
+                                        .font(AppTheme.Fonts.inter(14))
                                     Text("Assign")
                                         .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                 }
@@ -171,7 +171,7 @@ struct PersonDetailView: View {
             if myItems.isEmpty {
                 HStack(spacing: 10) {
                     Image(systemName: "tray")
-                        .font(.system(size: 18))
+                        .font(AppTheme.Fonts.inter(18))
                         .foregroundColor(Color.textSecondary.opacity(0.35))
                     Text("No items assigned yet")
                         .font(AppTheme.Fonts.inter(14, weight: .regular))
@@ -202,7 +202,7 @@ struct PersonDetailView: View {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     }) {
                                         Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 20))
+                                            .font(AppTheme.Fonts.inter(20))
                                             .foregroundColor(.red.opacity(0.8))
                                     }
 
@@ -217,7 +217,7 @@ struct PersonDetailView: View {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     }) {
                                         Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 20))
+                                            .font(AppTheme.Fonts.inter(20))
                                             .foregroundColor(Color.appPrimary)
                                     }
                                 }
@@ -282,7 +282,7 @@ struct PersonDetailView: View {
                             }) {
                                 HStack(spacing: 5) {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 14))
+                                        .font(AppTheme.Fonts.inter(14))
                                     Text("Add")
                                         .font(AppTheme.Fonts.inter(13, weight: .semibold))
                                 }
@@ -319,7 +319,7 @@ struct PersonDetailView: View {
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
                     Image(systemName: "tag")
-                        .font(.system(size: 15))
+                        .font(AppTheme.Fonts.inter(15))
                         .foregroundColor(focusedField == .name ? Color.appPrimary : Color.textSecondary.opacity(0.5))
                         .animation(.easeInOut(duration: 0.15), value: focusedField)
                         .frame(width: 20)
@@ -339,7 +339,7 @@ struct PersonDetailView: View {
 
                 HStack(spacing: 12) {
                     Image(systemName: "banknote")
-                        .font(.system(size: 15))
+                        .font(AppTheme.Fonts.inter(15))
                         .foregroundColor(focusedField == .price ? Color.appPrimary : Color.textSecondary.opacity(0.5))
                         .animation(.easeInOut(duration: 0.15), value: focusedField)
                         .frame(width: 20)
