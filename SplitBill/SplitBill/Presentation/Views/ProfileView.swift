@@ -8,8 +8,7 @@ import PhotosUI
 
 struct ProfileView: View {
 
-    @AppStorage("userName")          private var userName       = ""
-    @AppStorage("appColorScheme")    private var appColorScheme = "system"
+    @AppStorage("userName") private var userName = ""
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
 
@@ -37,11 +36,6 @@ struct ProfileView: View {
                     personalCard
                     paymentCard
                     appCard
-
-                    Text("Made with ♥ by Alvin")
-                        .font(AppTheme.Fonts.inter(13, weight: .regular))
-                        .foregroundColor(Color.textSecondary.opacity(0.4))
-                        .padding(.bottom, 12)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -292,32 +286,16 @@ struct ProfileView: View {
 
     private var appCard: some View {
         cardSection(label: "APP") {
-            VStack(spacing: 0) {
-
-                // Dark Mode picker
-                appRow(icon: "moon.fill", iconColor: Color(hex: "8B5CF6"), title: "Dark Mode", trailing: {
-                    Picker("", selection: $appColorScheme) {
-                        Text("System").tag("system")
-                        Text("Light").tag("light")
-                        Text("Dark").tag("dark")
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 160)
-                })
-
-                cardDivider
-
-                // Rate Splitin — Coming Soon
-                appRow(icon: "star.fill", iconColor: Color(hex: "F59E0B"), title: "Rate Splitin", trailing: {
-                    Text("Coming Soon")
-                        .roundedFont(12, weight: .medium)
-                        .foregroundColor(Color.textSecondary.opacity(0.5))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.textSecondary.opacity(0.08))
-                        .clipShape(Capsule())
-                })
-            }
+            // Rate Splitin — Coming Soon
+            appRow(icon: "star.fill", iconColor: Color(hex: "F59E0B"), title: "Rate Splitin", trailing: {
+                Text("Coming Soon")
+                    .roundedFont(12, weight: .medium)
+                    .foregroundColor(Color.textSecondary.opacity(0.5))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.textSecondary.opacity(0.08))
+                    .clipShape(Capsule())
+            })
         }
     }
 
