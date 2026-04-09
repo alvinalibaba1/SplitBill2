@@ -98,7 +98,7 @@ struct StatsView: View {
             }
         }
         .navigationTitle("Statistics")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Summary Cards

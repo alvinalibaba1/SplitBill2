@@ -46,7 +46,7 @@ struct HistoryView: View {
             }
         }
         .navigationTitle("History")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !viewModel.history.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {
