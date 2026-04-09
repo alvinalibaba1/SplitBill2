@@ -8,20 +8,16 @@ import PhotosUI
 
 struct ProfileView: View {
 
-    @AppStorage("userName")          private var userName          = ""
-    @AppStorage("userBio")           private var userBio           = ""
-    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = true
+    @AppStorage("userName")          private var userName       = ""
+    @AppStorage("appColorScheme")    private var appColorScheme = "system"
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
 
     @State private var profileImage: UIImage?        = ProfileImageStore.load()
     @State private var photoItem: PhotosPickerItem?  = nil
-    @State private var showResetConfirm              = false
     @State private var bankAccounts: [BankAccount]   = BankAccountStore.load()
     @State private var editingAccount: BankAccount?  = nil
     @State private var showAddAccount                = false
-
-    private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
 
     private var totalBills: Int   { historyVM.history.count }
     private var totalSplit: Double { historyVM.history.reduce(0) { $0 + $1.totalAmount } }
@@ -41,7 +37,6 @@ struct ProfileView: View {
                     personalCard
                     paymentCard
                     appCard
-                    resetCard
 
                     Text("Made with ♥ by Alvin")
                         .font(AppTheme.Fonts.inter(13, weight: .regular))
@@ -70,14 +65,6 @@ struct ProfileView: View {
                     BankAccountStore.save(bankAccounts)
                 }
             }
-        }
-        .confirmationDialog(
-            "This will restart the onboarding flow.",
-            isPresented: $showResetConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Replay Onboarding", role: .destructive) { hasSeenOnboarding = false }
-            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -144,13 +131,6 @@ struct ProfileView: View {
                 Text(userName.isEmpty ? "Set your name →" : userName)
                     .roundedFont(20, weight: .bold)
                     .foregroundColor(userName.isEmpty ? Color.textSecondary : Color.textPrimary)
-
-                if !userBio.isEmpty {
-                    Text(userBio)
-                        .roundedFont(13, weight: .regular)
-                        .foregroundColor(Color.textSecondary)
-                        .lineLimit(2)
-                }
 
                 if let first = bankAccounts.first {
                     HStack(spacing: 4) {
@@ -223,25 +203,13 @@ struct ProfileView: View {
 
     private var personalCard: some View {
         cardSection(label: "PERSONAL") {
-            VStack(spacing: 0) {
-                inlineField(
-                    icon: "person.fill",
-                    iconColor: Color.appPrimary,
-                    title: "Name",
-                    placeholder: "Your name",
-                    text: $userName
-                )
-
-                cardDivider
-
-                inlineField(
-                    icon: "text.quote",
-                    iconColor: Color.appSecondary,
-                    title: "Bio",
-                    placeholder: "Short bio",
-                    text: $userBio
-                )
-            }
+            inlineField(
+                icon: "person.fill",
+                iconColor: Color.appPrimary,
+                title: "Name",
+                placeholder: "Your name",
+                text: $userName
+            )
         }
     }
 
@@ -325,57 +293,31 @@ struct ProfileView: View {
     private var appCard: some View {
         cardSection(label: "APP") {
             VStack(spacing: 0) {
-                appRow(icon: "info.circle.fill", iconColor: Color.appPrimary, title: "Version", trailing: {
-                    Text(appVersion)
-                        .roundedFont(14, weight: .regular)
-                        .foregroundColor(Color.textSecondary)
+
+                // Dark Mode picker
+                appRow(icon: "moon.fill", iconColor: Color(hex: "8B5CF6"), title: "Dark Mode", trailing: {
+                    Picker("", selection: $appColorScheme) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 160)
                 })
 
                 cardDivider
 
-                Button(action: {
-                    if let url = URL(string: "itms-apps://itunes.apple.com/app/id") {
-                        UIApplication.shared.open(url)
-                    }
-                }) {
-                    appRow(icon: "star.fill", iconColor: Color(hex: "F59E0B"), title: "Rate Splitzy", trailing: {
-                        Image(systemName: "chevron.right")
-                            .font(AppTheme.Fonts.inter(11, weight: .semibold))
-                            .foregroundColor(Color.textSecondary.opacity(0.3))
-                    })
-                }
-                .buttonStyle(.plain)
-
-                cardDivider
-
-                Button(action: {
-                    if let url = URL(string: "mailto:feedback@splitzy.app") {
-                        UIApplication.shared.open(url)
-                    }
-                }) {
-                    appRow(icon: "envelope.fill", iconColor: Color.appSecondary, title: "Send Feedback", trailing: {
-                        Image(systemName: "chevron.right")
-                            .font(AppTheme.Fonts.inter(11, weight: .semibold))
-                            .foregroundColor(Color.textSecondary.opacity(0.3))
-                    })
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    // MARK: - Reset Card
-
-    private var resetCard: some View {
-        cardSection(label: "RESET") {
-            Button(action: { showResetConfirm = true }) {
-                appRow(icon: "arrow.counterclockwise", iconColor: Color.orange, title: "Replay Onboarding", trailing: {
-                    Image(systemName: "chevron.right")
-                        .font(AppTheme.Fonts.inter(11, weight: .semibold))
-                        .foregroundColor(Color.textSecondary.opacity(0.3))
+                // Rate Splitin — Coming Soon
+                appRow(icon: "star.fill", iconColor: Color(hex: "F59E0B"), title: "Rate Splitin", trailing: {
+                    Text("Coming Soon")
+                        .roundedFont(12, weight: .medium)
+                        .foregroundColor(Color.textSecondary.opacity(0.5))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.textSecondary.opacity(0.08))
+                        .clipShape(Capsule())
                 })
             }
-            .buttonStyle(.plain)
         }
     }
 

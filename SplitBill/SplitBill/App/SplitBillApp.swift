@@ -40,13 +40,24 @@ struct SplitBillApp: App {
     }
 
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    @AppStorage("appColorScheme")    private var appColorScheme    = "system"
+
+    private var preferredScheme: ColorScheme? {
+        switch appColorScheme {
+        case "light": return .light
+        case "dark":  return .dark
+        default:      return nil   // follows system
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
             if hasSeenOnboarding {
                 TabBarView()
+                    .preferredColorScheme(preferredScheme)
             } else {
                 OnboardingView()
+                    .preferredColorScheme(preferredScheme)
             }
         }
     }
