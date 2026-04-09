@@ -94,14 +94,18 @@ struct HistoryDetailView: View {
                 Spacer()
 
                 if allPaid {
-                    VStack(spacing: 2) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(AppTheme.Fonts.inter(28))
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(AppTheme.Fonts.inter(16))
                             .foregroundColor(.green)
                         Text("Settled")
-                            .roundedFont(10, weight: .semibold)
-                            .foregroundColor(.green)
+                            .roundedFont(13, weight: .semibold)
+                            .foregroundColor(Color.textPrimary)
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.green.opacity(0.1))
+                    .clipShape(Capsule())
                     .transition(.scale.combined(with: .opacity))
                 }
             }
@@ -128,7 +132,7 @@ struct HistoryDetailView: View {
                 statCell(
                     label: "STILL OWED",
                     value: allPaid ? "—" : unpaidTotal.toCurrency(),
-                    valueColor: allPaid ? Color.textSecondary : Color.appSecondary
+                    valueColor: allPaid ? Color.textSecondary : Color.appPrimary
                 )
 
                 Rectangle()
@@ -176,7 +180,7 @@ struct HistoryDetailView: View {
 
                 Text("\(Int(progress * 100))%")
                     .roundedFont(14, weight: .bold)
-                    .foregroundColor(progress >= 1 ? .green : Color.appPrimary)
+                    .foregroundColor(Color.appPrimary)
                     .contentTransition(.numericText())
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: progress)
             }
@@ -191,8 +195,8 @@ struct HistoryDetailView: View {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(
                             progress >= 1
-                            ? LinearGradient(colors: [.green, Color(hex: "34D399")], startPoint: .leading, endPoint: .trailing)
-                            : LinearGradient(colors: [Color.appPrimary, Color.appSecondary], startPoint: .leading, endPoint: .trailing)
+                            ? LinearGradient(colors: [Color.appPrimary, Color.appPrimary.opacity(0.7)], startPoint: .leading, endPoint: .trailing)
+                            : LinearGradient(colors: [Color.appPrimary, Color.appPrimary.opacity(0.5)], startPoint: .leading, endPoint: .trailing)
                         )
                         .frame(width: geo.size.width * CGFloat(min(progress, 1.0)), height: 10)
                         .animation(.spring(response: 0.5, dampingFraction: 0.75), value: progress)
@@ -203,9 +207,9 @@ struct HistoryDetailView: View {
             // Paid vs remaining
             HStack {
                 HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 7, height: 7)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(AppTheme.Fonts.inter(11))
+                        .foregroundColor(.green)
                     Text("Paid \(paidTotal.toCurrency())")
                         .roundedFont(12, weight: .medium)
                         .foregroundColor(Color.textSecondary)
@@ -216,7 +220,7 @@ struct HistoryDetailView: View {
                 if !allPaid {
                     HStack(spacing: 4) {
                         Circle()
-                            .fill(Color.appSecondary)
+                            .fill(Color.appPrimary.opacity(0.5))
                             .frame(width: 7, height: 7)
                         Text("Remaining \(unpaidTotal.toCurrency())")
                             .roundedFont(12, weight: .medium)
@@ -239,7 +243,7 @@ struct HistoryDetailView: View {
             HStack {
                 Text(title)
                     .roundedFont(11, weight: .semibold)
-                    .foregroundColor(isPaidSection ? .green : Color.appSecondary)
+                    .foregroundColor(isPaidSection ? Color.textSecondary : Color.appPrimary)
                     .tracking(0.8)
 
                 Spacer()
@@ -248,7 +252,7 @@ struct HistoryDetailView: View {
                      ? paidTotal.toCurrency()
                      : unpaidTotal.toCurrency())
                     .roundedFont(12, weight: .semibold)
-                    .foregroundColor(isPaidSection ? .green : Color.appSecondary)
+                    .foregroundColor(isPaidSection ? Color.textSecondary : Color.appPrimary)
             }
             .padding(.horizontal, 4)
 
@@ -271,15 +275,15 @@ struct HistoryDetailView: View {
 
     @ViewBuilder
     private func personRow(_ person: HistoryPerson, isPaidSection: Bool) -> some View {
-        let avatarColors: [Color] = [.appPrimary, .appSecondary, .purple, .teal, .indigo, .pink]
+        let avatarColors: [Color] = [.appPrimary, Color(hex: "A29BFE"), Color(hex: "FD79A8"), .teal, .indigo, Color(hex: "FDCB6E")]
         let colorIndex = abs(person.name.hashValue) % avatarColors.count
-        let avatarColor: Color = isPaidSection ? .green : avatarColors[colorIndex]
+        let avatarColor: Color = isPaidSection ? Color.textSecondary : avatarColors[colorIndex]
 
         HStack(spacing: 14) {
             // Avatar
             ZStack {
                 Circle()
-                    .fill(avatarColor.opacity(0.14))
+                    .fill(avatarColor.opacity(isPaidSection ? 0.08 : 0.14))
                     .frame(width: 46, height: 46)
 
                 if isPaidSection {
@@ -336,7 +340,7 @@ struct HistoryDetailView: View {
                 // Flash confirm state
                 Image(systemName: isPaidSection ? "arrow.uturn.left.circle.fill" : "checkmark.circle.fill")
                     .font(AppTheme.Fonts.inter(24))
-                    .foregroundColor(isPaidSection ? Color.appSecondary : .green)
+                    .foregroundColor(isPaidSection ? Color.appPrimary : .green)
                     .transition(.scale.combined(with: .opacity))
             } else if isPaidSection {
                 // Undo button
