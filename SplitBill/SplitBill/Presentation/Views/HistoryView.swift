@@ -72,6 +72,7 @@ struct HistoryView: View {
 // MARK: - History Card
 struct HistoryCardView: View {
     let bill: BillHistory
+    var showPaymentStatus: Bool = false   // shows paid/unpaid badge when true
 
     // Max 5 avatars, then show overflow
     private let maxAvatars = 5
@@ -105,11 +106,28 @@ struct HistoryCardView: View {
 
             Spacer()
 
-            // Right: people count + avatar stack
+            // Right: people count + avatar stack + optional status badge
             VStack(alignment: .trailing, spacing: 8) {
-                Text("\(bill.people.count) \(bill.people.count == 1 ? "person" : "people")")
-                    .font(AppTheme.Fonts.inter(13, weight: .medium))
-                    .foregroundColor(Color.textSecondary)
+                if showPaymentStatus {
+                    let unpaidCount = bill.people.filter { !$0.isPaid }.count
+                    if unpaidCount == 0 {
+                        Label("All paid", systemImage: "checkmark.circle.fill")
+                            .font(AppTheme.Fonts.inter(12, weight: .semibold))
+                            .foregroundColor(.green)
+                    } else {
+                        Text("\(unpaidCount) unpaid")
+                            .font(AppTheme.Fonts.inter(12, weight: .semibold))
+                            .foregroundColor(Color.appSecondary)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 4)
+                            .background(Color.appSecondary.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                } else {
+                    Text("\(bill.people.count) \(bill.people.count == 1 ? "person" : "people")")
+                        .font(AppTheme.Fonts.inter(13, weight: .medium))
+                        .foregroundColor(Color.textSecondary)
+                }
 
                 // Avatar stack
                 avatarStack
@@ -120,10 +138,8 @@ struct HistoryCardView: View {
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-        )
+        .background(Color.appSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
 

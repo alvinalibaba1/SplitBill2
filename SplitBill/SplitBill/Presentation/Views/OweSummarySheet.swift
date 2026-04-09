@@ -12,159 +12,120 @@ struct OweSummarySheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // Bills sorted newest first, only those with people
     private var bills: [BillHistory] {
         history
             .filter { !$0.people.isEmpty }
             .sorted { $0.date > $1.date }
     }
 
-    /// Only sum unpaid people amounts — decreases in real-time as people are marked paid
     private var totalOwed: Double {
         history.reduce(0) { total, bill in
             total + bill.people.filter { !$0.isPaid }.reduce(0) { $0 + $1.amount }
         }
     }
 
-    // Unpaid people count across all bills
-    private var totalUnpaid: Int {
-        history.flatMap { $0.people }.filter { !$0.isPaid }.count
+    private var unpaidBillCount: Int {
+        history.filter { $0.people.contains { !$0.isPaid } }.count
     }
+
+    private var allSettled: Bool { totalOwed == 0 && !history.isEmpty }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Handle bar
+
+            // MARK: - Handle
             Capsule()
                 .fill(Color.textSecondary.opacity(0.25))
                 .frame(width: 36, height: 4)
                 .padding(.top, 12)
-                .padding(.bottom, 20)
+                .padding(.bottom, 24)
 
-            // Header
-            VStack(spacing: 6) {
-                Text("Who Owes You")
-                    .roundedFont(22, weight: .bold)
-                    .foregroundColor(Color.textPrimary)
+            // MARK: - Header
+            VStack(spacing: 16) {
+                VStack(spacing: 6) {
+                    Text("Who Owes You")
+                        .roundedFont(13, weight: .semibold)
+                        .foregroundColor(Color.textSecondary)
+                        .tracking(0.5)
 
-                HStack(spacing: 6) {
-                    Text(totalOwed.toCurrency())
-                        .roundedFont(15, weight: .semibold)
-                        .foregroundColor(Color.appPrimary)
+                    Text(allSettled ? "All Settled!" : totalOwed.toCurrency())
+                        .roundedFont(36, weight: .bold)
+                        .foregroundColor(allSettled ? .green : Color.appPrimary)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: totalOwed)
+                }
 
-                    if totalUnpaid > 0 {
-                        Text("·")
-                            .foregroundColor(Color.textSecondary)
-                        Text("\(totalUnpaid) unpaid")
-                            .roundedFont(14, weight: .medium)
-                            .foregroundColor(Color.appSecondary)
+                // Status pills
+                HStack(spacing: 8) {
+                    statPill(
+                        value: "\(bills.count)",
+                        label: "bills",
+                        color: Color.appPrimary
+                    )
+
+                    if unpaidBillCount > 0 {
+                        statPill(
+                            value: "\(unpaidBillCount)",
+                            label: "with unpaid",
+                            color: Color.appSecondary
+                        )
+                    }
+
+                    if allSettled {
+                        statPill(value: "✓", label: "settled", color: .green)
                     }
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.bottom, 20)
+            .padding(.bottom, 24)
+            .padding(.horizontal, 24)
 
             Divider()
                 .background(Color.textSecondary.opacity(0.1))
 
+            // MARK: - Bill List
             if bills.isEmpty {
                 emptyState
             } else {
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 12) {
                         ForEach(bills) { bill in
-                            billRow(bill)
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                dismiss()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    onBillTap(bill)
+                                }
+                            }) {
+                                HistoryCardView(bill: bill, showPaymentStatus: true)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 16)
-                    .padding(.bottom, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 32)
                 }
             }
         }
-        .background(Color.appSurface.ignoresSafeArea())
+        .background(Color.appBackground.ignoresSafeArea())
     }
 
-    // MARK: - Bill Row
+    // MARK: - Stat Pill
 
-    @ViewBuilder
-    private func billRow(_ bill: BillHistory) -> some View {
-        let unpaidPeople = bill.people.filter { !$0.isPaid }
-        let allPaid = unpaidPeople.isEmpty
-
-        Button(action: {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            dismiss()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                onBillTap(bill)
-            }
-        }) {
-            HStack(spacing: 14) {
-                // Bill icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(allPaid
-                              ? Color.green.opacity(0.12)
-                              : Color.appPrimary.opacity(0.10))
-                        .frame(width: 48, height: 48)
-
-                    Image(systemName: allPaid ? "checkmark.seal.fill" : "doc.text.fill")
-                        .font(AppTheme.Fonts.inter(20))
-                        .foregroundColor(allPaid ? .green : Color.appPrimary)
-                }
-
-                // Bill info
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(bill.title.isEmpty ? "Untitled Bill" : bill.title)
-                        .roundedFont(15, weight: .semibold)
-                        .foregroundColor(Color.textPrimary)
-                        .lineLimit(1)
-
-                    Text(bill.formattedDate)
-                        .roundedFont(12, weight: .regular)
-                        .foregroundColor(Color.textSecondary)
-                }
-
-                Spacer()
-
-                // Right side: unpaid amount + badge
-                let unpaidTotal = unpaidPeople.reduce(0) { $0 + $1.amount }
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(allPaid ? bill.totalAmount.toCurrency() : unpaidTotal.toCurrency())
-                        .roundedFont(15, weight: .bold)
-                        .foregroundColor(allPaid ? Color.textSecondary : Color.textPrimary)
-
-                    if allPaid {
-                        Text("All paid ✓")
-                            .roundedFont(11, weight: .semibold)
-                            .foregroundColor(.green)
-                    } else {
-                        Text("\(unpaidPeople.count) unpaid")
-                            .roundedFont(11, weight: .semibold)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.appSecondary.opacity(0.15))
-                            .foregroundColor(Color.appSecondary)
-                            .clipShape(Capsule())
-                    }
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(AppTheme.Fonts.inter(12, weight: .semibold))
-                    .foregroundColor(Color.textSecondary.opacity(0.35))
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(Color.appBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(allPaid
-                            ? Color.green.opacity(0.2)
-                            : Color.textSecondary.opacity(0.08),
-                            lineWidth: 1)
-            )
+    private func statPill(value: String, label: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Text(value)
+                .roundedFont(13, weight: .bold)
+                .foregroundColor(color)
+            Text(label)
+                .roundedFont(12, weight: .regular)
+                .foregroundColor(Color.textSecondary)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.08))
+        .clipShape(Capsule())
     }
 
     // MARK: - Empty State
