@@ -222,21 +222,20 @@ private struct ProfileSetupPageView: View {
 
     let isActive: Bool
 
-    @AppStorage("userName")          private var userName          = ""
-    @AppStorage("userBio")           private var userBio           = ""
-    @AppStorage("bankName")          private var bankName          = ""
-    @AppStorage("bankAccountNumber") private var bankAccountNumber = ""
-    @AppStorage("bankAccountName")   private var bankAccountName   = ""
+    @AppStorage("userName") private var userName = ""
+    @AppStorage("userBio")  private var userBio  = ""
 
     @State private var profileImage: UIImage? = ProfileImageStore.load()
     @State private var photoItem: PhotosPickerItem? = nil
 
     @State private var contentOpacity: Double  = 0
     @State private var contentOffset: CGFloat  = 32
+    @State private var bankAccounts: [BankAccount] = BankAccountStore.load()
+    @State private var showAddBank = false
 
     @FocusState private var focusedField: ProfileField?
 
-    enum ProfileField { case name, bio, bankName, bankNumber, bankAccountName }
+    enum ProfileField { case name, bio }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -338,36 +337,57 @@ private struct ProfileSetupPageView: View {
 
                     // Bank info
                     formSection(title: "PAYMENT INFO") {
-                        formField(
-                            icon: "building.columns.fill",
-                            iconColor: Color(hex: "F59E0B"),
-                            placeholder: "Bank name (e.g. BCA, Mandiri)",
-                            text: $bankName,
-                            field: .bankName,
-                            keyboard: .default
-                        )
+                        // Existing accounts (read-only rows)
+                        ForEach(bankAccounts) { account in
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(hex: "F59E0B").opacity(0.12))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "building.columns.fill")
+                                        .font(AppTheme.Fonts.inter(15, weight: .medium))
+                                        .foregroundColor(Color(hex: "F59E0B"))
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(account.bankName)
+                                        .font(AppTheme.Fonts.inter(15, weight: .semibold))
+                                        .foregroundColor(Color.textPrimary)
+                                    Text(account.accountNumber)
+                                        .font(AppTheme.Fonts.inter(12, weight: .regular))
+                                        .foregroundColor(Color.textSecondary)
+                                }
+                                Spacer()
+                                Text(account.accountName)
+                                    .font(AppTheme.Fonts.inter(13, weight: .regular))
+                                    .foregroundColor(Color.textSecondary)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 14)
 
-                        Divider().padding(.leading, 52)
+                            Divider().padding(.leading, 52)
+                        }
 
-                        formField(
-                            icon: "creditcard.fill",
-                            iconColor: Color(hex: "8B5CF6"),
-                            placeholder: "Account number",
-                            text: $bankAccountNumber,
-                            field: .bankNumber,
-                            keyboard: .numberPad
-                        )
-
-                        Divider().padding(.leading, 52)
-
-                        formField(
-                            icon: "person.text.rectangle.fill",
-                            iconColor: Color(hex: "10B981"),
-                            placeholder: "Account holder name",
-                            text: $bankAccountName,
-                            field: .bankAccountName,
-                            keyboard: .default
-                        )
+                        // Add Bank Account button
+                        Button(action: { showAddBank = true }) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.appPrimary.opacity(0.1))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "plus")
+                                        .font(AppTheme.Fonts.inter(15, weight: .semibold))
+                                        .foregroundColor(Color.appPrimary)
+                                }
+                                Text("Add Bank Account")
+                                    .font(AppTheme.Fonts.inter(15, weight: .regular))
+                                    .foregroundColor(Color.appPrimary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -388,6 +408,14 @@ private struct ProfileSetupPageView: View {
         }
         .onAppear { if isActive { animateIn() } }
         .onTapGesture { focusedField = nil }
+        .sheet(isPresented: $showAddBank) {
+            BankAccountFormSheet(
+                account: BankAccount(bankName: "", accountNumber: "", accountName: "")
+            ) { saved in
+                bankAccounts.append(saved)
+                BankAccountStore.save(bankAccounts)
+            }
+        }
     }
 
     // MARK: - Form Section
@@ -436,14 +464,11 @@ private struct ProfileSetupPageView: View {
                 .foregroundColor(Color.textPrimary)
                 .keyboardType(keyboard)
                 .focused($focusedField, equals: field)
-                .submitLabel(field == .bankAccountName ? .done : .next)
+                .submitLabel(field == .bio ? .done : .next)
                 .onSubmit {
                     switch field {
-                    case .name:            focusedField = .bio
-                    case .bio:             focusedField = .bankName
-                    case .bankName:        focusedField = .bankNumber
-                    case .bankNumber:      focusedField = .bankAccountName
-                    case .bankAccountName: focusedField = nil
+                    case .name: focusedField = .bio
+                    case .bio:  focusedField = nil
                     }
                 }
         }

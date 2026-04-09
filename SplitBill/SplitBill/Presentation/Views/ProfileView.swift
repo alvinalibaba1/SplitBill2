@@ -10,9 +10,6 @@ struct ProfileView: View {
 
     @AppStorage("userName")          private var userName          = ""
     @AppStorage("userBio")           private var userBio           = ""
-    @AppStorage("bankName")          private var bankName          = ""
-    @AppStorage("bankAccountNumber") private var bankAccountNumber = ""
-    @AppStorage("bankAccountName")   private var bankAccountName   = ""
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = true
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
@@ -20,6 +17,9 @@ struct ProfileView: View {
     @State private var profileImage: UIImage? = ProfileImageStore.load()
     @State private var photoItem: PhotosPickerItem? = nil
     @State private var showResetConfirm = false
+    @State private var bankAccounts: [BankAccount] = BankAccountStore.load()
+    @State private var editingAccount: BankAccount? = nil
+    @State private var showAddAccount = false
 
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
 
@@ -104,14 +104,19 @@ struct ProfileView: View {
                                     .padding(.horizontal, 32)
                             }
 
-                            if !bankName.isEmpty && !bankAccountNumber.isEmpty {
+                            if let first = bankAccounts.first {
                                 HStack(spacing: 6) {
                                     Image(systemName: "building.columns.fill")
                                         .font(AppTheme.Fonts.inter(11))
                                         .foregroundColor(Color.appPrimary.opacity(0.7))
-                                    Text("\(bankName) · \(bankAccountNumber)")
+                                    Text("\(first.bankName) · \(first.accountNumber)")
                                         .roundedFont(12, weight: .medium)
                                         .foregroundColor(Color.textSecondary)
+                                    if bankAccounts.count > 1 {
+                                        Text("+\(bankAccounts.count - 1) more")
+                                            .roundedFont(11, weight: .semibold)
+                                            .foregroundColor(Color.appPrimary.opacity(0.7))
+                                    }
                                 }
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 6)
@@ -174,33 +179,70 @@ struct ProfileView: View {
                     sectionHeader("PAYMENT INFO")
 
                     VStack(spacing: 0) {
-                        settingsRow(icon: "building.columns.fill", iconColor: Color(hex: "F59E0B"), title: "Bank") {
-                            TextField("e.g. BCA, Mandiri", text: $bankName)
-                                .font(AppTheme.Fonts.inter(15, weight: .regular))
-                                .foregroundColor(Color.textSecondary)
-                                .multilineTextAlignment(.trailing)
-                                .submitLabel(.next)
+                        // List existing accounts
+                        ForEach(bankAccounts) { account in
+                            Button(action: { editingAccount = account }) {
+                                HStack(spacing: 12) {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(hex: "F59E0B").opacity(0.12))
+                                        .frame(width: 36, height: 36)
+                                        .overlay(
+                                            Image(systemName: "building.columns.fill")
+                                                .font(AppTheme.Fonts.inter(16, weight: .medium))
+                                                .foregroundColor(Color(hex: "F59E0B"))
+                                        )
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(account.bankName)
+                                            .roundedFont(15, weight: .semibold)
+                                            .foregroundColor(Color.textPrimary)
+                                        Text(maskedNumber(account.accountNumber))
+                                            .roundedFont(12)
+                                            .foregroundColor(Color.textSecondary)
+                                    }
+                                    Spacer()
+                                    Text(account.accountName)
+                                        .roundedFont(13)
+                                        .foregroundColor(Color.textSecondary)
+                                        .lineLimit(1)
+                                    Image(systemName: "chevron.right")
+                                        .font(AppTheme.Fonts.inter(13, weight: .semibold))
+                                        .foregroundColor(Color.textSecondary.opacity(0.35))
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 13)
+                            }
+                            .buttonStyle(.plain)
+
+                            if account.id != bankAccounts.last?.id {
+                                Divider().padding(.leading, 52)
+                            }
                         }
 
-                        Divider().padding(.leading, 52)
-
-                        settingsRow(icon: "creditcard.fill", iconColor: Color(hex: "8B5CF6"), title: "Account No.") {
-                            TextField("Account number", text: $bankAccountNumber)
-                                .font(AppTheme.Fonts.inter(15, weight: .regular))
-                                .foregroundColor(Color.textSecondary)
-                                .multilineTextAlignment(.trailing)
-                                .keyboardType(.numberPad)
+                        // Divider before Add button if accounts exist
+                        if !bankAccounts.isEmpty {
+                            Divider().padding(.leading, 52)
                         }
 
-                        Divider().padding(.leading, 52)
-
-                        settingsRow(icon: "person.text.rectangle.fill", iconColor: Color(hex: "10B981"), title: "Account Name") {
-                            TextField("Holder name", text: $bankAccountName)
-                                .font(AppTheme.Fonts.inter(15, weight: .regular))
-                                .foregroundColor(Color.textSecondary)
-                                .multilineTextAlignment(.trailing)
-                                .submitLabel(.done)
+                        // Add Bank Account button
+                        Button(action: { showAddAccount = true }) {
+                            HStack(spacing: 12) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.appPrimary.opacity(0.1))
+                                    .frame(width: 36, height: 36)
+                                    .overlay(
+                                        Image(systemName: "plus")
+                                            .font(AppTheme.Fonts.inter(16, weight: .semibold))
+                                            .foregroundColor(Color.appPrimary)
+                                    )
+                                Text("Add Bank Account")
+                                    .roundedFont(15)
+                                    .foregroundColor(Color.appPrimary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 13)
                         }
+                        .buttonStyle(.plain)
                     }
                     .background(Color.appSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -281,6 +323,22 @@ struct ProfileView: View {
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showAddAccount) {
+            BankAccountFormSheet(
+                account: BankAccount(bankName: "", accountNumber: "", accountName: "")
+            ) { saved in
+                bankAccounts.append(saved)
+                BankAccountStore.save(bankAccounts)
+            }
+        }
+        .sheet(item: $editingAccount) { acct in
+            BankAccountFormSheet(account: acct) { saved in
+                if let idx = bankAccounts.firstIndex(where: { $0.id == saved.id }) {
+                    bankAccounts[idx] = saved
+                    BankAccountStore.save(bankAccounts)
+                }
+            }
+        }
         .confirmationDialog(
             "This will restart the onboarding flow.",
             isPresented: $showResetConfirm,
@@ -294,6 +352,10 @@ struct ProfileView: View {
     }
 
     // MARK: - Helpers
+
+    private func maskedNumber(_ number: String) -> String {
+        number.count <= 4 ? number : "•••• \(number.suffix(4))"
+    }
 
     private func statPill(value: String, label: String) -> some View {
         VStack(spacing: 3) {
