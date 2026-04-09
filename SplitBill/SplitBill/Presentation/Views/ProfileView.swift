@@ -10,18 +10,10 @@ struct ProfileView: View {
 
     @AppStorage("userName") private var userName = ""
 
-    @ObservedObject private var historyVM = HistoryViewModel.shared
-
     @State private var profileImage: UIImage?        = ProfileImageStore.load()
     @State private var photoItem: PhotosPickerItem?  = nil
     @State private var bankAccounts: [BankAccount]   = BankAccountStore.load()
     @State private var showBankSheet                 = false
-
-    private var totalBills: Int   { historyVM.history.count }
-    private var totalSplit: Double { historyVM.history.reduce(0) { $0 + $1.totalAmount } }
-    private var totalPeople: Int  {
-        Set(historyVM.history.flatMap { $0.people.map { $0.name } }).count
-    }
 
     var body: some View {
         ZStack {
@@ -31,10 +23,8 @@ struct ProfileView: View {
                 VStack(spacing: 20) {
 
                     heroCard
-                    statsCard
                     personalCard
                     paymentCard
-                    appCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -144,41 +134,6 @@ struct ProfileView: View {
         )
     }
 
-    // MARK: - Stats Card
-
-    private var statsCard: some View {
-        HStack(spacing: 0) {
-            statCell(value: "\(totalBills)", label: "Bills")
-            dividerLine
-            statCell(value: "\(totalPeople)", label: "People")
-            dividerLine
-            statCell(value: totalSplit.toCurrency(), label: "Total Split")
-        }
-        .padding(.vertical, 18)
-        .background(Color.appSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 3)
-    }
-
-    private var dividerLine: some View {
-        Rectangle()
-            .fill(Color.textSecondary.opacity(0.12))
-            .frame(width: 1, height: 36)
-    }
-
-    private func statCell(value: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .roundedFont(17, weight: .bold)
-                .foregroundColor(Color.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(label)
-                .roundedFont(11, weight: .regular)
-                .foregroundColor(Color.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
 
     // MARK: - Personal Card
 
@@ -220,22 +175,6 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - App Card
-
-    private var appCard: some View {
-        cardSection(label: "APP") {
-            // Rate Splitin — Coming Soon
-            appRow(icon: "star.fill", iconColor: Color(hex: "F59E0B"), title: "Rate Splitin", trailing: {
-                Text("Coming Soon")
-                    .roundedFont(12, weight: .medium)
-                    .foregroundColor(Color.textSecondary.opacity(0.5))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.textSecondary.opacity(0.08))
-                    .clipShape(Capsule())
-            })
-        }
-    }
 
     // MARK: - Reusable Components
 

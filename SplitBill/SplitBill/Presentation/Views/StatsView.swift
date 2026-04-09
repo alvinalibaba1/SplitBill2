@@ -87,8 +87,8 @@ struct StatsView: View {
                     VStack(spacing: 20) {
                         summaryCards
                         monthlyChart
-                        topPeopleSection
                         biggestBillCard
+                        topPeopleSection
                         Color.clear.frame(height: 20)
                     }
                     .padding(.horizontal, 16)

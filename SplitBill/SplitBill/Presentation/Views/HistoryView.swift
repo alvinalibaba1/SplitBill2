@@ -9,7 +9,6 @@ import SwiftUI
 
 struct HistoryView: View {
     @ObservedObject var viewModel = HistoryViewModel.shared
-    @State private var showClearAlert = false
 
     var body: some View {
         ZStack {
@@ -32,13 +31,24 @@ struct HistoryView: View {
                 }
                 .padding()
             } else {
-                ScrollView {
+                ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 12) {
                         ForEach(viewModel.history) { bill in
                             NavigationLink(destination: HistoryDetailView(bill: bill)) {
                                 HistoryCardView(bill: bill)
                             }
                             .buttonStyle(.plain)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    withAnimation {
+                                        if let idx = viewModel.history.firstIndex(where: { $0.id == bill.id }) {
+                                            viewModel.deleteHistory(at: IndexSet(integer: idx))
+                                        }
+                                    }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     .padding()
@@ -47,25 +57,6 @@ struct HistoryView: View {
         }
         .navigationTitle("History")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if !viewModel.history.isEmpty {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showClearAlert = true }) {
-                        Text("Clear All")
-                            .font(AppTheme.Fonts.inter(15, weight: .medium))
-                            .foregroundColor(Color.textPrimary)
-                    }
-                }
-            }
-        }
-        .alert("Clear All History?", isPresented: $showClearAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Clear", role: .destructive) {
-                withAnimation { viewModel.clearAllHistory() }
-            }
-        } message: {
-            Text("All split bill history will be permanently deleted.")
-        }
     }
 }
 
