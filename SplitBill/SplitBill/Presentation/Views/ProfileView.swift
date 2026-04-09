@@ -15,8 +15,7 @@ struct ProfileView: View {
     @State private var profileImage: UIImage?        = ProfileImageStore.load()
     @State private var photoItem: PhotosPickerItem?  = nil
     @State private var bankAccounts: [BankAccount]   = BankAccountStore.load()
-    @State private var editingAccount: BankAccount?  = nil
-    @State private var showAddAccount                = false
+    @State private var showBankSheet                 = false
 
     private var totalBills: Int   { historyVM.history.count }
     private var totalSplit: Double { historyVM.history.reduce(0) { $0 + $1.totalAmount } }
@@ -44,21 +43,9 @@ struct ProfileView: View {
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showAddAccount) {
-            BankAccountFormSheet(
-                account: BankAccount(bankName: "", accountNumber: "", accountName: "")
-            ) { saved in
-                bankAccounts.append(saved)
-                BankAccountStore.save(bankAccounts)
-            }
-        }
-        .sheet(item: $editingAccount) { acct in
-            BankAccountFormSheet(account: acct) { saved in
-                if let idx = bankAccounts.firstIndex(where: { $0.id == saved.id }) {
-                    bankAccounts[idx] = saved
-                    BankAccountStore.save(bankAccounts)
-                }
-            }
+        .sheet(isPresented: $showBankSheet) {
+            BankListSheet(bankAccounts: $bankAccounts)
+                .presentationDetents([.medium, .large])
         }
     }
 
@@ -211,74 +198,25 @@ struct ProfileView: View {
 
     private var paymentCard: some View {
         cardSection(label: "PAYMENT INFO") {
-            VStack(spacing: 0) {
-                ForEach(bankAccounts) { account in
-                    Button(action: { editingAccount = account }) {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(hex: "F59E0B").opacity(0.12))
-                                    .frame(width: 40, height: 40)
-                                Image(systemName: "building.columns.fill")
-                                    .font(AppTheme.Fonts.inter(16, weight: .medium))
-                                    .foregroundColor(Color(hex: "F59E0B"))
-                            }
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                showBankSheet = true
+            }) {
+                appRow(icon: "building.columns.fill", iconColor: Color(hex: "F59E0B"), title: "Bank", trailing: {
+                    HStack(spacing: 6) {
+                        Text(bankAccounts.isEmpty
+                             ? "No accounts"
+                             : "\(bankAccounts.count) account\(bankAccounts.count == 1 ? "" : "s")")
+                            .roundedFont(14, weight: .regular)
+                            .foregroundColor(Color.textSecondary)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(account.bankName)
-                                    .roundedFont(15, weight: .semibold)
-                                    .foregroundColor(Color.textPrimary)
-                                Text(maskedNumber(account.accountNumber))
-                                    .roundedFont(12, weight: .regular)
-                                    .foregroundColor(Color.textSecondary)
-                            }
-
-                            Spacer()
-
-                            Text(account.accountName)
-                                .roundedFont(13, weight: .regular)
-                                .foregroundColor(Color.textSecondary)
-                                .lineLimit(1)
-
-                            Image(systemName: "chevron.right")
-                                .font(AppTheme.Fonts.inter(11, weight: .semibold))
-                                .foregroundColor(Color.textSecondary.opacity(0.3))
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
+                        Image(systemName: "chevron.right")
+                            .font(AppTheme.Fonts.inter(11, weight: .semibold))
+                            .foregroundColor(Color.textSecondary.opacity(0.3))
                     }
-                    .buttonStyle(.plain)
-
-                    if account.id != bankAccounts.last?.id {
-                        cardDivider
-                    }
-                }
-
-                if !bankAccounts.isEmpty { cardDivider }
-
-                // Add button
-                Button(action: { showAddAccount = true }) {
-                    HStack(spacing: 14) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.appPrimary.opacity(0.10))
-                                .frame(width: 40, height: 40)
-                            Image(systemName: "plus")
-                                .font(AppTheme.Fonts.inter(16, weight: .semibold))
-                                .foregroundColor(Color.appPrimary)
-                        }
-
-                        Text("Add Bank Account")
-                            .roundedFont(15, weight: .medium)
-                            .foregroundColor(Color.appPrimary)
-
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                }
-                .buttonStyle(.plain)
+                })
             }
+            .buttonStyle(.plain)
         }
     }
 
