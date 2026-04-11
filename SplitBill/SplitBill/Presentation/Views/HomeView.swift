@@ -14,6 +14,7 @@ struct HomeView: View {
     @EnvironmentObject var router: NavigationRouter
 
     @Binding var selectedTab: Int
+    @AppStorage("appLanguage") private var appLanguage: String = "en"
 
     @State private var showCamera = false
     @State private var showOweSummary = false
@@ -46,7 +47,7 @@ struct HomeView: View {
             OweSummarySheet(history: viewModel.history) { bill in
                 router.push(.historyDetail(bill))
             }
-            .presentationDetents([.fraction(0.6), .large])
+            .presentationDetents([.large])
             .presentationDragIndicator(.hidden)
         }
     }
@@ -152,7 +153,7 @@ struct HomeView: View {
         }) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("PEOPLE OWE YOU")
+                    Text("home.owe.title".localized)
                         .roundedFont(11, weight: .semibold)
                         .foregroundColor(Color.appPrimary.opacity(0.7))
                         .tracking(0.8)
@@ -165,20 +166,18 @@ struct HomeView: View {
 
                     HStack(spacing: 4) {
                         if viewModel.history.isEmpty {
-                            Text("No bills yet")
+                            Text("home.no.bills".localized)
                                 .roundedFont(13, weight: .regular)
                                 .foregroundColor(Color.textSecondary)
                         } else if billsWithUnpaid == 0 {
-                            Text("All bills settled ✓")
+                            Text("home.bills.settled".localized)
                                 .roundedFont(13, weight: .medium)
                                 .foregroundColor(.green)
                         } else {
-                            Text("across \(billsWithUnpaid) bill\(billsWithUnpaid == 1 ? "" : "s")")
+                            let fmt = billsWithUnpaid == 1 ? "home.subtitle.single".localized : "home.subtitle.plural".localized
+                            Text(String(format: fmt, billsWithUnpaid))
                                 .roundedFont(13, weight: .regular)
                                 .foregroundColor(Color.textSecondary)
-                            Text("· tap to see breakdown")
-                                .roundedFont(12, weight: .regular)
-                                .foregroundColor(Color.appPrimary.opacity(0.6))
                         }
                     }
                 }
@@ -226,7 +225,7 @@ struct HomeView: View {
                 haptics.impactOccurred()
                 router.push(.manualInput)
             }) {
-                Label("Add Manually", systemImage: "plus.rectangle")
+                Label("home.add.manually".localized, systemImage: "plus.rectangle")
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -240,7 +239,7 @@ struct HomeView: View {
                 haptics.impactOccurred()
                 showCamera = true
             }) {
-                Label("Quick Scan", systemImage: "viewfinder")
+                Label("home.quick.scan".localized, systemImage: "viewfinder")
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -256,12 +255,12 @@ struct HomeView: View {
     private var splitHistory: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Recent Split")
+                Text("home.recent.split".localized)
                     .roundedFont(18, weight: .bold)
                     .foregroundColor(Color.textPrimary)
                 Spacer()
                 if !viewModel.history.isEmpty {
-                    Button("See all") { selectedTab = 2 }
+                    Button("home.see.all".localized) { selectedTab = 2 }
                         .font(AppTheme.Fonts.inter(14, weight: .medium))
                         .foregroundColor(Color.appPrimary)
                 }
@@ -273,11 +272,11 @@ struct HomeView: View {
                         .font(AppTheme.Fonts.inter(44))
                         .foregroundColor(Color.textSecondary.opacity(0.3))
 
-                    Text("No splits yet")
+                    Text("home.no.splits".localized)
                         .roundedFont(16, weight: .semibold)
                         .foregroundColor(Color.textSecondary)
 
-                    Text("Tap Add Manually or Quick Scan to get started.")
+                    Text("home.no.splits.sub".localized)
                         .roundedFont(13, weight: .regular)
                         .foregroundColor(Color.textSecondary.opacity(0.7))
                         .multilineTextAlignment(.center)

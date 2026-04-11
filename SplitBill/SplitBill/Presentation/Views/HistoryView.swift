@@ -9,6 +9,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @ObservedObject var viewModel = HistoryViewModel.shared
+    @AppStorage("appLanguage") private var appLanguage: String = "en"
 
     var body: some View {
         ZStack {
@@ -20,11 +21,11 @@ struct HistoryView: View {
                         .font(AppTheme.Fonts.inter(64))
                         .foregroundColor(Color.textSecondary.opacity(0.3))
 
-                    Text("No History Yet")
+                    Text("history.empty.title".localized)
                         .font(AppTheme.Fonts.inter(20, weight: .semibold))
                         .foregroundColor(Color.textSecondary)
 
-                    Text("Your first split bill will appear here")
+                    Text("history.empty.sub".localized)
                         .font(AppTheme.Fonts.inter(15, weight: .regular))
                         .foregroundColor(Color.textSecondary.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -46,7 +47,7 @@ struct HistoryView: View {
                                         }
                                     }
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label("common.delete".localized, systemImage: "trash")
                                 }
                             }
                         }
@@ -55,7 +56,7 @@ struct HistoryView: View {
                 }
             }
         }
-        .navigationTitle("History")
+        .navigationTitle("history.title".localized)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -81,7 +82,7 @@ struct HistoryCardView: View {
 
             // Left: bill info
             VStack(alignment: .leading, spacing: 4) {
-                Text(bill.title.isEmpty ? "Untitled Bill" : bill.title)
+                Text(bill.title.isEmpty ? "history.untitled".localized : bill.title)
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
                     .foregroundColor(Color.textPrimary)
 
@@ -102,11 +103,11 @@ struct HistoryCardView: View {
                 if showPaymentStatus {
                     let unpaidCount = bill.people.filter { !$0.isPaid }.count
                     if unpaidCount == 0 {
-                        Label("All paid", systemImage: "checkmark.circle.fill")
+                        Label("history.all.paid".localized, systemImage: "checkmark.circle.fill")
                             .font(AppTheme.Fonts.inter(12, weight: .semibold))
                             .foregroundColor(.green)
                     } else {
-                        Text("\(unpaidCount) unpaid")
+                        Text("\(unpaidCount) \("history.unpaid".localized)")
                             .font(AppTheme.Fonts.inter(12, weight: .semibold))
                             .foregroundColor(Color.appSecondary)
                             .padding(.horizontal, 9)
@@ -115,7 +116,7 @@ struct HistoryCardView: View {
                             .clipShape(Capsule())
                     }
                 } else {
-                    Text("\(bill.people.count) \(bill.people.count == 1 ? "person" : "people")")
+                    Text("\(bill.people.count) \(bill.people.count == 1 ? "history.person".localized : "history.people".localized)")
                         .font(AppTheme.Fonts.inter(13, weight: .medium))
                         .foregroundColor(Color.textSecondary)
                 }

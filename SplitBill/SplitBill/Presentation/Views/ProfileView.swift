@@ -10,10 +10,13 @@ struct ProfileView: View {
 
     @AppStorage("userName") private var userName = ""
 
+    @AppStorage("appLanguage") private var currentLanguage: String = "en"
+
     @State private var profileImage: UIImage?        = ProfileImageStore.load()
     @State private var photoItem: PhotosPickerItem?  = nil
     @State private var bankAccounts: [BankAccount]   = BankAccountStore.load()
     @State private var showBankSheet                 = false
+    @State private var showLanguageSheet             = false
 
     var body: some View {
         ZStack {
@@ -25,6 +28,7 @@ struct ProfileView: View {
                     heroCard
                     personalCard
                     paymentCard
+                    preferencesCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -36,6 +40,10 @@ struct ProfileView: View {
         .sheet(isPresented: $showBankSheet) {
             BankListSheet(bankAccounts: $bankAccounts)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showLanguageSheet) {
+            LanguagePickerSheet()
+                .presentationDetents([.medium])
         }
     }
 
@@ -175,6 +183,31 @@ struct ProfileView: View {
         }
     }
 
+
+    // MARK: - Preferences Card
+
+    private var preferencesCard: some View {
+        cardSection(label: "profile.section.prefs".localized) {
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                showLanguageSheet = true
+            }) {
+                appRow(icon: "globe", iconColor: Color(hex: "6366F1"), title: "profile.language".localized, trailing: {
+                    HStack(spacing: 6) {
+                        Text(currentLanguage == "id" ? "🇮🇩" : "🇬🇧")
+                            .font(.system(size: 14))
+                        Text(currentLanguage == "id" ? "Indonesia" : "English")
+                            .roundedFont(14, weight: .regular)
+                            .foregroundColor(Color.textSecondary)
+                        Image(systemName: "chevron.right")
+                            .font(AppTheme.Fonts.inter(11, weight: .semibold))
+                            .foregroundColor(Color.textSecondary.opacity(0.3))
+                    }
+                })
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
     // MARK: - Reusable Components
 

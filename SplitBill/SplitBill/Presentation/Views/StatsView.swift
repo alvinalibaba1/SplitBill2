@@ -10,6 +10,7 @@ struct StatsView: View {
 
     @ObservedObject private var viewModel = HistoryViewModel.shared
     @EnvironmentObject var router: NavigationRouter
+    @AppStorage("appLanguage") private var appLanguage: String = "en"
 
     // MARK: - Computed Stats
 
@@ -97,7 +98,7 @@ struct StatsView: View {
                 }
             }
         }
-        .navigationTitle("Statistics")
+        .navigationTitle("stats.title".localized)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -108,13 +109,13 @@ struct StatsView: View {
             statCard(
                 icon: "doc.text.fill",
                 iconColor: Color.appPrimary,
-                label: "Total Bills",
+                label: "stats.total.bills".localized,
                 value: "\(totalBills)"
             )
             statCard(
                 icon: "calendar",
                 iconColor: Color.appSecondary,
-                label: "This Month",
+                label: "stats.this.month".localized,
                 value: currentMonthTotal.toCurrency()
             )
         }
@@ -156,7 +157,7 @@ struct StatsView: View {
     private var monthlyChart: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Monthly Spending")
+                Text("stats.monthly.spending".localized)
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
                     .foregroundColor(Color.textPrimary)
                 Spacer()
@@ -166,7 +167,7 @@ struct StatsView: View {
             }
 
             if monthlyData.allSatisfy({ $0.total == 0 }) {
-                Text("No spending data yet")
+                Text("stats.no.spending".localized)
                     .font(AppTheme.Fonts.inter(14, weight: .regular))
                     .foregroundColor(Color.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -205,12 +206,12 @@ struct StatsView: View {
 
     private var topPeopleSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Top People")
+            Text("stats.top.people".localized)
                 .font(AppTheme.Fonts.inter(16, weight: .semibold))
                 .foregroundColor(Color.textPrimary)
 
             if topPeople.isEmpty {
-                Text("No people data yet")
+                Text("stats.no.people".localized)
                     .font(AppTheme.Fonts.inter(14, weight: .regular))
                     .foregroundColor(Color.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -239,7 +240,7 @@ struct StatsView: View {
                                 Text(person.total.toCurrency())
                                     .font(AppTheme.Fonts.inter(14, weight: .semibold))
                                     .foregroundColor(Color.textPrimary)
-                                Text("\(person.count) bill\(person.count == 1 ? "" : "s")")
+                                Text("\(person.count) \(person.count == 1 ? "stats.bill".localized : "stats.bills".localized)")
                                     .font(AppTheme.Fonts.inter(12, weight: .regular))
                                     .foregroundColor(Color.textSecondary)
                             }
@@ -266,7 +267,7 @@ struct StatsView: View {
         if let bill = biggestBill {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("Biggest Bill")
+                    Text("stats.biggest.bill".localized)
                         .font(AppTheme.Fonts.inter(16, weight: .semibold))
                         .foregroundColor(Color.textPrimary)
                     Spacer()
@@ -287,7 +288,7 @@ struct StatsView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(bill.title.isEmpty ? "Untitled Bill" : bill.title)
+                            Text(bill.title.isEmpty ? "history.untitled".localized : bill.title)
                                 .font(AppTheme.Fonts.inter(15, weight: .semibold))
                                 .foregroundColor(Color.textPrimary)
                             Text(bill.formattedDate)
@@ -325,10 +326,10 @@ struct StatsView: View {
             Image(systemName: "chart.bar.xaxis")
                 .font(AppTheme.Fonts.inter(52))
                 .foregroundColor(Color.textSecondary.opacity(0.2))
-            Text("No data yet")
+            Text("stats.empty.title".localized)
                 .font(AppTheme.Fonts.inter(18, weight: .semibold))
                 .foregroundColor(Color.textSecondary)
-            Text("Complete your first bill split to see insights here.")
+            Text("stats.empty.sub".localized)
                 .font(AppTheme.Fonts.inter(14, weight: .regular))
                 .foregroundColor(Color.textSecondary.opacity(0.7))
                 .multilineTextAlignment(.center)

@@ -1,0 +1,70 @@
+/* ── Profile ───────────────────────────────────── */
+"profile.title"             = "Profile";
+"profile.section.personal"  = "PERSONAL";
+"profile.section.payment"   = "PAYMENT INFO";
+"profile.section.prefs"     = "PREFERENCES";
+"profile.name"              = "Name";
+"profile.name.placeholder"  = "Your name";
+"profile.bank"              = "Bank";
+"profile.bank.none"         = "No accounts";
+"profile.bank.accounts"     = "account";
+"profile.bank.accounts.pl"  = "accounts";
+"profile.language"          = "Language";
+
+/* ── Home ──────────────────────────────────────── */
+"home.owe.title"            = "PEOPLE OWE YOU";
+"home.bills.settled"        = "All bills settled ✓";
+"home.no.bills"             = "No bills yet";
+"home.subtitle.single"      = "across %d bill · tap to see breakdown";
+"home.subtitle.plural"      = "across %d bills · tap to see breakdown";
+"home.add.manually"         = "Add Manually";
+"home.quick.scan"           = "Quick Scan";
+"home.recent.split"         = "Recent Split";
+"home.see.all"              = "See all";
+"home.no.splits"            = "No splits yet";
+"home.no.splits.sub"        = "Tap Add Manually or Quick Scan to get started.";
+
+/* ── History ───────────────────────────────────── */
+"history.title"             = "History";
+"history.empty.title"       = "No History Yet";
+"history.empty.sub"         = "Your first split bill will appear here";
+"history.untitled"          = "Untitled Bill";
+"history.person"            = "person";
+"history.people"            = "people";
+"history.all.paid"          = "All paid ✓";
+"history.unpaid"            = "unpaid";
+
+/* ── Statistics ────────────────────────────────── */
+"stats.title"               = "Statistics";
+"stats.total.bills"         = "Total Bills";
+"stats.this.month"          = "This Month";
+"stats.monthly.spending"    = "Monthly Spending";
+"stats.no.spending"         = "No spending data yet";
+"stats.top.people"          = "Top People";
+"stats.no.people"           = "No people data yet";
+"stats.biggest.bill"        = "Biggest Bill";
+"stats.empty.title"         = "No data yet";
+"stats.empty.sub"           = "Complete your first bill split to see insights here.";
+"stats.bill"                = "bill";
+"stats.bills"               = "bills";
+
+/* ── Detail ────────────────────────────────────── */
+"detail.still.owes"         = "STILL OWES YOU";
+"detail.already.paid"       = "ALREADY PAID";
+"detail.settled"            = "Settled";
+"detail.total.bill"         = "TOTAL BILL";
+"detail.still.owed"         = "STILL OWED";
+"detail.people"             = "PEOPLE";
+"detail.progress"           = "Collection Progress";
+"detail.paid.label"         = "Paid";
+"detail.remaining"          = "Remaining";
+"detail.undo"               = "Undo";
+"detail.mark.paid"          = "Paid";
+
+/* ── Common ────────────────────────────────────── */
+"common.save"               = "Save";
+"common.cancel"             = "Cancel";
+"common.delete"             = "Delete";
+"common.done"               = "Done";
+"common.edit"               = "Edit";
+"common.add"                = "Add";

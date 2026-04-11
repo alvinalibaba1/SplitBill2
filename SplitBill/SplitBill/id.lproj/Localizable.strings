@@ -1,0 +1,70 @@
+/* ── Profile ───────────────────────────────────── */
+"profile.title"             = "Profil";
+"profile.section.personal"  = "PERSONAL";
+"profile.section.payment"   = "INFO PEMBAYARAN";
+"profile.section.prefs"     = "PREFERENSI";
+"profile.name"              = "Nama";
+"profile.name.placeholder"  = "Nama kamu";
+"profile.bank"              = "Bank";
+"profile.bank.none"         = "Belum ada akun";
+"profile.bank.accounts"     = "akun";
+"profile.bank.accounts.pl"  = "akun";
+"profile.language"          = "Bahasa";
+
+/* ── Home ──────────────────────────────────────── */
+"home.owe.title"            = "ORANG YANG BERHUTANG";
+"home.bills.settled"        = "Semua tagihan lunas ✓";
+"home.no.bills"             = "Belum ada tagihan";
+"home.subtitle.single"      = "%d tagihan · ketuk untuk lihat detail";
+"home.subtitle.plural"      = "%d tagihan · ketuk untuk lihat detail";
+"home.add.manually"         = "Tambah Manual";
+"home.quick.scan"           = "Scan Cepat";
+"home.recent.split"         = "Pembagian Terbaru";
+"home.see.all"              = "Lihat semua";
+"home.no.splits"            = "Belum ada pembagian";
+"home.no.splits.sub"        = "Ketuk Tambah Manual atau Scan Cepat untuk mulai.";
+
+/* ── History ───────────────────────────────────── */
+"history.title"             = "Riwayat";
+"history.empty.title"       = "Belum Ada Riwayat";
+"history.empty.sub"         = "Tagihan pertamamu akan muncul di sini";
+"history.untitled"          = "Tagihan Tanpa Judul";
+"history.person"            = "orang";
+"history.people"            = "orang";
+"history.all.paid"          = "Semua lunas ✓";
+"history.unpaid"            = "belum bayar";
+
+/* ── Statistics ────────────────────────────────── */
+"stats.title"               = "Statistik";
+"stats.total.bills"         = "Total Tagihan";
+"stats.this.month"          = "Bulan Ini";
+"stats.monthly.spending"    = "Pengeluaran Bulanan";
+"stats.no.spending"         = "Belum ada data pengeluaran";
+"stats.top.people"          = "Orang Teratas";
+"stats.no.people"           = "Belum ada data orang";
+"stats.biggest.bill"        = "Tagihan Terbesar";
+"stats.empty.title"         = "Belum ada data";
+"stats.empty.sub"           = "Selesaikan pembagian tagihan pertamamu untuk melihat insights.";
+"stats.bill"                = "tagihan";
+"stats.bills"               = "tagihan";
+
+/* ── Detail ────────────────────────────────────── */
+"detail.still.owes"         = "MASIH BERHUTANG";
+"detail.already.paid"       = "SUDAH BAYAR";
+"detail.settled"            = "Lunas";
+"detail.total.bill"         = "TOTAL TAGIHAN";
+"detail.still.owed"         = "SISA HUTANG";
+"detail.people"             = "ORANG";
+"detail.progress"           = "Progress Pembayaran";
+"detail.paid.label"         = "Sudah Bayar";
+"detail.remaining"          = "Sisa";
+"detail.undo"               = "Batalkan";
+"detail.mark.paid"          = "Bayar";
+
+/* ── Common ────────────────────────────────────── */
+"common.save"               = "Simpan";
+"common.cancel"             = "Batal";
+"common.delete"             = "Hapus";
+"common.done"               = "Selesai";
+"common.edit"               = "Ubah";
+"common.add"                = "Tambah";

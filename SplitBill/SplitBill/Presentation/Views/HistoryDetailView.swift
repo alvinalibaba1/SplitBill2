@@ -9,6 +9,7 @@ struct HistoryDetailView: View {
     let bill: BillHistory
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
+    @AppStorage("appLanguage") private var appLanguage: String = "en"
     @State private var showShare = false
     @State private var justMarkedId: UUID? = nil
 
@@ -41,14 +42,14 @@ struct HistoryDetailView: View {
                     progressCard
                     if !unpaidPeople.isEmpty {
                         peopleSection(
-                            title: "STILL OWES YOU",
+                            title: "detail.still.owes".localized,
                             people: unpaidPeople,
                             isPaidSection: false
                         )
                     }
                     if !paidPeople.isEmpty {
                         peopleSection(
-                            title: "ALREADY PAID",
+                            title: "detail.already.paid".localized,
                             people: paidPeople,
                             isPaidSection: true
                         )
@@ -82,7 +83,7 @@ struct HistoryDetailView: View {
             // Title + date row
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(liveBill.title.isEmpty ? "Untitled Bill" : liveBill.title)
+                    Text(liveBill.title.isEmpty ? "history.untitled".localized : liveBill.title)
                         .roundedFont(22, weight: .bold)
                         .foregroundColor(Color.textPrimary)
 
@@ -98,7 +99,7 @@ struct HistoryDetailView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(AppTheme.Fonts.inter(16))
                             .foregroundColor(.green)
-                        Text("Settled")
+                        Text("detail.settled".localized)
                             .roundedFont(13, weight: .semibold)
                             .foregroundColor(Color.textPrimary)
                     }
@@ -120,7 +121,7 @@ struct HistoryDetailView: View {
             // Stats row
             HStack(spacing: 0) {
                 statCell(
-                    label: "TOTAL BILL",
+                    label: "detail.total.bill".localized,
                     value: liveBill.totalAmount.toCurrency(),
                     valueColor: Color.textPrimary
                 )
@@ -130,7 +131,7 @@ struct HistoryDetailView: View {
                     .frame(width: 1, height: 40)
 
                 statCell(
-                    label: "STILL OWED",
+                    label: "detail.still.owed".localized,
                     value: allPaid ? "—" : unpaidTotal.toCurrency(),
                     valueColor: allPaid ? Color.textSecondary : Color.appPrimary
                 )
@@ -140,7 +141,7 @@ struct HistoryDetailView: View {
                     .frame(width: 1, height: 40)
 
                 statCell(
-                    label: "PEOPLE",
+                    label: "detail.people".localized,
                     value: "\(liveBill.people.count)",
                     valueColor: Color.textPrimary
                 )
@@ -172,7 +173,7 @@ struct HistoryDetailView: View {
     private var progressCard: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("Collection Progress")
+                Text("detail.progress".localized)
                     .roundedFont(14, weight: .semibold)
                     .foregroundColor(Color.textPrimary)
 
@@ -210,7 +211,7 @@ struct HistoryDetailView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(AppTheme.Fonts.inter(11))
                         .foregroundColor(.green)
-                    Text("Paid \(paidTotal.toCurrency())")
+                    Text("\("detail.paid.label".localized) \(paidTotal.toCurrency())")
                         .roundedFont(12, weight: .medium)
                         .foregroundColor(Color.textSecondary)
                 }
@@ -222,7 +223,7 @@ struct HistoryDetailView: View {
                         Circle()
                             .fill(Color.appPrimary.opacity(0.5))
                             .frame(width: 7, height: 7)
-                        Text("Remaining \(unpaidTotal.toCurrency())")
+                        Text("\("detail.remaining".localized) \(unpaidTotal.toCurrency())")
                             .roundedFont(12, weight: .medium)
                             .foregroundColor(Color.textSecondary)
                     }
@@ -347,7 +348,7 @@ struct HistoryDetailView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.uturn.left")
                         .font(AppTheme.Fonts.inter(11, weight: .medium))
-                    Text("Undo")
+                    Text("detail.undo".localized)
                         .roundedFont(12, weight: .medium)
                 }
                 .foregroundColor(Color.textSecondary)
@@ -360,7 +361,7 @@ struct HistoryDetailView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
                         .font(AppTheme.Fonts.inter(11, weight: .bold))
-                    Text("Paid")
+                    Text("detail.mark.paid".localized)
                         .roundedFont(12, weight: .semibold)
                 }
                 .foregroundColor(.white)
