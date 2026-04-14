@@ -10,8 +10,11 @@ struct HistoryDetailView: View {
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @State private var showShare = false
+    @State private var showShare    = false
+    @State private var shareItems: [Any] = []
     @State private var justMarkedId: UUID? = nil
+
+    private var bankAccounts: [BankAccount] { BankAccountStore.load() }
 
     private var liveBill: BillHistory {
         historyVM.history.first(where: { $0.id == bill.id }) ?? bill
@@ -64,7 +67,7 @@ struct HistoryDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(action: { showShare = true }) {
+                Button(action: { prepareAndShare() }) {
                     Image(systemName: "square.and.arrow.up")
                         .font(AppTheme.Fonts.inter(16, weight: .medium))
                         .foregroundColor(Color.appPrimary)
@@ -72,7 +75,7 @@ struct HistoryDetailView: View {
             }
         }
         .sheet(isPresented: $showShare) {
-            ActivityView(activityItems: [shareMessage])
+            ActivityView(activityItems: shareItems)
         }
     }
 
@@ -378,13 +381,46 @@ struct HistoryDetailView: View {
     // MARK: - Share
 
     private var shareMessage: String {
-        var msg = "🧾 \(liveBill.title)\n"
-        msg += "Total: \(liveBill.totalAmount.toCurrency())\n\n"
-        for p in liveBill.people {
-            let status = p.isPaid ? "✓ paid" : "owes"
-            msg += "· \(p.name) \(status) \(p.amount.toCurrency())\n"
+        var msg = "🧾 \(liveBill.title.isEmpty ? "Bill" : liveBill.title)\n"
+        msg += "📅 \(liveBill.formattedDate)\n"
+        msg += "💰 Total: \(liveBill.totalAmount.toCurrency())\n\n"
+
+        if !unpaidPeople.isEmpty {
+            msg += "⏳ Still owes:\n"
+            for p in unpaidPeople {
+                msg += "  · \(p.name)  →  \(p.amount.toCurrency())\n"
+            }
+            msg += "\n"
         }
+        if !paidPeople.isEmpty {
+            msg += "✅ Already paid:\n"
+            for p in paidPeople {
+                msg += "  · \(p.name)  →  \(p.amount.toCurrency())\n"
+            }
+            msg += "\n"
+        }
+
+        if !bankAccounts.isEmpty {
+            msg += "💳 Transfer to:\n"
+            for bank in bankAccounts {
+                let masked = bank.accountNumber.count > 4
+                    ? "•••• \(bank.accountNumber.suffix(4))"
+                    : bank.accountNumber
+                msg += "  \(bank.bankName)  ·  \(masked)  ·  \(bank.accountName)\n"
+            }
+        }
+
+        msg += "\n_Sent via Splitin_"
         return msg
+    }
+
+    private func prepareAndShare() {
+        var items: [Any] = [shareMessage]
+        if let pdfURL = try? PDFExporter.generateFromHistory(bill: liveBill, banks: bankAccounts) {
+            items.insert(pdfURL, at: 0)
+        }
+        shareItems = items
+        showShare  = true
     }
 }
 

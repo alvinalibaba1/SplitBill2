@@ -204,4 +204,167 @@ struct PDFExporter {
         try data.write(to: tempURL)
         return tempURL
     }
+
+    // MARK: - Generate PDF from BillHistory
+
+    static func generateFromHistory(bill: BillHistory, banks: [BankAccount]) throws -> URL {
+        let pageWidth: CGFloat  = 612
+        let pageHeight: CGFloat = 792
+        let margin: CGFloat     = 40
+        let brandBlue  = UIColor(red: 0.145, green: 0.388, blue: 0.922, alpha: 1.0) // #2563EB
+        let lightGray  = UIColor(red: 0.95,  green: 0.95,  blue: 0.95,  alpha: 1.0)
+        let midGray    = UIColor(red: 0.55,  green: 0.55,  blue: 0.55,  alpha: 1.0)
+        let darkText   = UIColor(red: 0.12,  green: 0.18,  blue: 0.27,  alpha: 1.0)
+        let greenColor = UIColor(red: 0.13,  green: 0.70,  blue: 0.37,  alpha: 1.0)
+
+        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight))
+
+        let data = renderer.pdfData { ctx in
+            ctx.beginPage()
+            let context = ctx.cgContext
+            var y: CGFloat = 0
+            let contentWidth = pageWidth - 2 * margin
+
+            // MARK: Helpers
+
+            func drawRect(_ rect: CGRect, fill: UIColor, radius: CGFloat = 0, stroke: UIColor? = nil) {
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: radius)
+                context.saveGState()
+                fill.setFill(); path.fill()
+                if let s = stroke { s.setStroke(); path.lineWidth = 0.5; path.stroke() }
+                context.restoreGState()
+            }
+
+            @discardableResult
+            func drawText(_ text: String, font: UIFont, color: UIColor,
+                          x: CGFloat, y: CGFloat, width: CGFloat,
+                          align: NSTextAlignment = .left) -> CGFloat {
+                let para = NSMutableParagraphStyle()
+                para.alignment = align
+                para.lineBreakMode = .byWordWrapping
+                let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: para]
+                let str = NSAttributedString(string: text, attributes: attrs)
+                let rect = CGRect(x: x, y: y, width: width, height: .greatestFiniteMagnitude)
+                let size = str.boundingRect(with: rect.size, options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+                str.draw(with: rect, options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+                return size.height
+            }
+
+            // MARK: Header
+            drawRect(CGRect(x: 0, y: 0, width: pageWidth, height: 130), fill: brandBlue)
+            drawText("Splitin", font: .systemFont(ofSize: 13, weight: .semibold),
+                     color: UIColor.white.withAlphaComponent(0.7), x: margin, y: 26, width: contentWidth)
+            drawText(bill.title.isEmpty ? "Bill Summary" : bill.title,
+                     font: .systemFont(ofSize: 26, weight: .bold),
+                     color: .white, x: margin, y: 48, width: contentWidth)
+
+            let dateFmt = DateFormatter()
+            dateFmt.dateStyle = .medium; dateFmt.timeStyle = .short
+            drawText(dateFmt.string(from: bill.date),
+                     font: .systemFont(ofSize: 12), color: UIColor.white.withAlphaComponent(0.85),
+                     x: margin, y: 98, width: contentWidth)
+            y = 150
+
+            // MARK: Summary Cards
+            let cardW = (contentWidth - 24) / 3
+            let cards: [(String, String)] = [
+                ("TOTAL BILL",  bill.totalAmount.toCurrency()),
+                ("PEOPLE",      "\(bill.people.count)"),
+                ("COLLECTED",   bill.people.filter { $0.isPaid }.reduce(0) { $0 + $1.amount }.toCurrency())
+            ]
+            for (i, card) in cards.enumerated() {
+                let cx = margin + CGFloat(i) * (cardW + 12)
+                drawRect(CGRect(x: cx, y: y, width: cardW, height: 76), fill: .white, radius: 10, stroke: lightGray)
+                drawText(card.0, font: .systemFont(ofSize: 9, weight: .semibold), color: midGray,
+                         x: cx + 10, y: y + 12, width: cardW - 20)
+                drawText(card.1, font: .systemFont(ofSize: 17, weight: .bold), color: darkText,
+                         x: cx + 10, y: y + 32, width: cardW - 20)
+            }
+            y += 96
+
+            // MARK: People Section
+            drawText("PEOPLE", font: .systemFont(ofSize: 11, weight: .bold), color: midGray,
+                     x: margin, y: y, width: contentWidth)
+            y += 22
+
+            for person in bill.people {
+                if y > pageHeight - 120 { ctx.beginPage(); y = margin }
+                let rowH: CGFloat = 52
+                let bgColor = person.isPaid ? UIColor(red: 0.93, green: 0.99, blue: 0.95, alpha: 1) : lightGray
+                drawRect(CGRect(x: margin, y: y, width: contentWidth, height: rowH), fill: bgColor, radius: 10)
+
+                // Avatar circle
+                let avatarColor = person.isPaid ? greenColor : brandBlue
+                drawRect(CGRect(x: margin + 10, y: y + 10, width: 32, height: 32), fill: avatarColor, radius: 16)
+                drawText(String(person.name.prefix(1)).uppercased(),
+                         font: .systemFont(ofSize: 13, weight: .bold), color: .white,
+                         x: margin + 10, y: y + 18, width: 32, align: .center)
+
+                // Name
+                drawText(person.name, font: .systemFont(ofSize: 14, weight: .semibold), color: darkText,
+                         x: margin + 52, y: y + 10, width: 200)
+
+                // Paid badge
+                let badgeText = person.isPaid ? "✓ Paid" : "Unpaid"
+                let badgeColor = person.isPaid ? greenColor : UIColor.systemOrange
+                drawText(badgeText, font: .systemFont(ofSize: 11, weight: .medium), color: badgeColor,
+                         x: margin + 52, y: y + 30, width: 120)
+
+                // Amount
+                drawText(person.amount.toCurrency(),
+                         font: .systemFont(ofSize: 15, weight: .bold), color: darkText,
+                         x: margin, y: y + 16, width: contentWidth - 10, align: .right)
+
+                y += rowH + 8
+            }
+            y += 10
+
+            // MARK: Bank Info Section
+            if !banks.isEmpty {
+                if y > pageHeight - 160 { ctx.beginPage(); y = margin }
+
+                drawText("PAYMENT INFO", font: .systemFont(ofSize: 11, weight: .bold), color: midGray,
+                         x: margin, y: y, width: contentWidth)
+                y += 22
+
+                for bank in banks {
+                    if y > pageHeight - 80 { ctx.beginPage(); y = margin }
+                    let bankRowH: CGFloat = 56
+                    drawRect(CGRect(x: margin, y: y, width: contentWidth, height: bankRowH),
+                             fill: UIColor(red: 0.94, green: 0.96, blue: 1.0, alpha: 1), radius: 10,
+                             stroke: UIColor(red: 0.145, green: 0.388, blue: 0.922, alpha: 0.2))
+
+                    // Bank icon placeholder
+                    drawRect(CGRect(x: margin + 10, y: y + 10, width: 36, height: 36),
+                             fill: brandBlue.withAlphaComponent(0.15), radius: 8)
+                    drawText("🏦", font: .systemFont(ofSize: 18),
+                             color: brandBlue, x: margin + 10, y: y + 16, width: 36, align: .center)
+
+                    drawText(bank.bankName, font: .systemFont(ofSize: 14, weight: .semibold), color: darkText,
+                             x: margin + 56, y: y + 10, width: contentWidth - 66)
+                    let maskedNum = bank.accountNumber.count > 4
+                        ? "•••• \(bank.accountNumber.suffix(4))"
+                        : bank.accountNumber
+                    drawText("\(maskedNum)  ·  \(bank.accountName)",
+                             font: .systemFont(ofSize: 12), color: midGray,
+                             x: margin + 56, y: y + 30, width: contentWidth - 66)
+                    y += bankRowH + 8
+                }
+            }
+
+            // MARK: Footer
+            let footerY = pageHeight - margin - 16
+            drawRect(CGRect(x: 0, y: footerY - 8, width: pageWidth, height: 1), fill: lightGray)
+            drawText("Generated by Splitin  ·  \(dateFmt.string(from: Date()))",
+                     font: .systemFont(ofSize: 9), color: midGray,
+                     x: margin, y: footerY, width: contentWidth, align: .center)
+        }
+
+        let fileName = (bill.title.isEmpty ? "Bill" : bill.title)
+            .replacingOccurrences(of: " ", with: "_")
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Splitin-\(fileName)-\(Int(Date().timeIntervalSince1970)).pdf")
+        try data.write(to: tempURL)
+        return tempURL
+    }
 }

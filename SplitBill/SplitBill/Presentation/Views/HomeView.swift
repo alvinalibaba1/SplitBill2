@@ -292,7 +292,7 @@ struct HomeView: View {
                 LazyVStack(spacing: 12) {
                     ForEach(viewModel.history.prefix(3)) { bill in
                         Button(action: { router.push(.historyDetail(bill)) }) {
-                            HistoryCardView(bill: bill)
+                            HistoryCardView(bill: bill, showPaymentStatus: true)
                         }
                         .buttonStyle(.plain)
                     }

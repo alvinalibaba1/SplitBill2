@@ -36,7 +36,7 @@ struct HistoryView: View {
                     LazyVStack(spacing: 12) {
                         ForEach(viewModel.history) { bill in
                             NavigationLink(destination: HistoryDetailView(bill: bill)) {
-                                HistoryCardView(bill: bill)
+                                HistoryCardView(bill: bill, showPaymentStatus: true)
                             }
                             .buttonStyle(.plain)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
