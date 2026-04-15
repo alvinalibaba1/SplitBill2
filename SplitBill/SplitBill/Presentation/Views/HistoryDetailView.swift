@@ -410,7 +410,6 @@ struct HistoryDetailView: View {
             }
         }
 
-        msg += "\n_Sent via Splitin_"
         return msg
     }
 

@@ -58,33 +58,85 @@ struct HomeView: View {
 
         LoadingState.shared.isProcessingScan = true
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            var observed: [(text: String, y: CGFloat)] = []
+        Task {
+            // ── Step 1: OCR with spatial grouping ──────────────────────────────
+            let lines: [String] = await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    var observed: [(text: String, x: CGFloat, y: CGFloat)] = []
 
-            let request = VNRecognizeTextRequest { req, _ in
-                guard let results = req.results as? [VNRecognizedTextObservation] else { return }
-                for obs in results {
-                    if let top = obs.topCandidates(1).first {
-                        observed.append((top.string, obs.boundingBox.origin.y))
+                    let request = VNRecognizeTextRequest { req, _ in
+                        guard let results = req.results as? [VNRecognizedTextObservation] else { return }
+                        for obs in results {
+                            if let top = obs.topCandidates(1).first {
+                                observed.append((top.string, obs.boundingBox.midX, obs.boundingBox.midY))
+                            }
+                        }
                     }
+                    request.recognitionLevel       = .accurate
+                    request.usesLanguageCorrection = true
+                    request.recognitionLanguages   = ["id-ID", "en-US"]
+                    request.minimumTextHeight      = 0.015
+
+                    let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                    try? handler.perform([request])
+
+                    // Merge observations on the same horizontal line, sort left→right
+                    let yThreshold: CGFloat = 0.025
+                    var lineGroups: [[(text: String, x: CGFloat, y: CGFloat)]] = []
+                    for obs in observed.sorted(by: { $0.y > $1.y }) {
+                        if let idx = lineGroups.indices.first(where: {
+                            !lineGroups[$0].isEmpty &&
+                            abs(lineGroups[$0][0].y - obs.y) < yThreshold
+                        }) {
+                            lineGroups[idx].append(obs)
+                        } else {
+                            lineGroups.append([obs])
+                        }
+                    }
+
+                    let result = lineGroups
+                        .sorted { ($0.first?.y ?? 0) > ($1.first?.y ?? 0) }
+                        .map { group in group.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
+                        .filter { !$0.isEmpty }
+
+                    continuation.resume(returning: result)
                 }
             }
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = true
-            request.recognitionLanguages = ["en-US", "id-ID"]
 
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            try? handler.perform([request])
+            // ── Step 2: Try Gemini AI first, fall back to SmartBillParser ──────
+            let billName: String
+            let total: String
+            let items: [(name: String, price: Double)]
+            let adjustments: [(name: String, amount: Double)]
 
-            let lines = observed.sorted { $0.y > $1.y }.map { $0.text }
-            let items       = SmartBillParser.extractItems(from: lines)
-            let adjustments = SmartBillParser.extractAdjustments(from: lines)
+            do {
+                let result = try await GeminiParser.parse(lines: lines)
+                billName    = result.billName ?? SmartBillParser.extractBillName(from: lines) ?? "Scanned Bill"
+                total       = result.total ?? SmartBillParser.extractBestTotal(from: lines) ?? ""
+                // If Gemini returned items use them; otherwise fall back
+                if !result.items.isEmpty {
+                    items       = result.items
+                    adjustments = result.adjustments.isEmpty
+                        ? SmartBillParser.extractAdjustments(from: lines)
+                        : result.adjustments
+                } else {
+                    items       = SmartBillParser.extractItems(from: lines)
+                    adjustments = SmartBillParser.extractAdjustments(from: lines)
+                }
+            } catch {
+                // Gemini unavailable / rate-limited → use local parser
+                billName    = SmartBillParser.extractBillName(from: lines) ?? "Scanned Bill"
+                total       = SmartBillParser.extractBestTotal(from: lines) ?? ""
+                items       = SmartBillParser.extractItems(from: lines)
+                adjustments = SmartBillParser.extractAdjustments(from: lines)
+            }
 
-            DispatchQueue.main.async {
+            // ── Step 3: Navigate ───────────────────────────────────────────────
+            await MainActor.run {
                 LoadingState.shared.isProcessingScan = false
                 let data = ScannedBillData(
-                    billName: "Scanned Bill",
-                    total: "",
+                    billName: billName,
+                    total: total,
                     items: items,
                     adjustments: adjustments
                 )
@@ -243,10 +295,13 @@ struct HomeView: View {
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(Color.appSurface)
-                    .foregroundColor(Color.textPrimary)
+                    .foregroundColor(Color.appPrimary)
+                    .background(Color.appPrimary.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: Color.appSurface.opacity(0.2), radius: 10, y: 5)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.appPrimary, lineWidth: 1.5)
+                    )
             }
         }
     }

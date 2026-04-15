@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcbkptlist
+*.moved-aside
+*.hmap
+*.ipa
+*.xcarchive
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Secrets — NEVER commit real keys
+**/Secrets.swift
+Secrets.swift
+
+# Env files
+.env
+*.env
