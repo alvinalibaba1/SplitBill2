@@ -19,6 +19,7 @@ struct HomeView: View {
     @State private var showCamera = false
     @State private var showOweSummary = false
     @State private var haptics = UIImpactFeedbackGenerator(style: .medium)
+    @State private var scanToast: String? = nil
 
     var body: some View {
         ZStack {
@@ -34,6 +35,22 @@ struct HomeView: View {
             .padding(.horizontal)
             .padding(.top, 10)
             .padding(.bottom, 16)
+
+            // AI / fallback toast
+            if let toast = scanToast {
+                VStack {
+                    Spacer()
+                    Text(toast)
+                        .font(AppTheme.Fonts.inter(13, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.75))
+                        .clipShape(Capsule())
+                        .padding(.bottom, 32)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
         .navigationTitle("")
         .navigationBarHidden(true)
@@ -52,86 +69,84 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - OCR Processing
+    // MARK: - OCR + AI Processing
     private func processImage(_ image: UIImage) {
         guard let cgImage = image.cgImage else { return }
 
         LoadingState.shared.isProcessingScan = true
 
         Task {
-            // ── Step 1: OCR with spatial grouping ──────────────────────────────
-            let lines: [String] = await withCheckedContinuation { continuation in
+            // ── Step 1: Vision OCR (runs in parallel with Gemini as a hint) ───
+            let ocrLines: [String] = await withCheckedContinuation { cont in
                 DispatchQueue.global(qos: .userInitiated).async {
                     var observed: [(text: String, x: CGFloat, y: CGFloat)] = []
-
-                    let request = VNRecognizeTextRequest { req, _ in
-                        guard let results = req.results as? [VNRecognizedTextObservation] else { return }
-                        for obs in results {
+                    let req = VNRecognizeTextRequest { r, _ in
+                        guard let res = r.results as? [VNRecognizedTextObservation] else { return }
+                        for obs in res {
                             if let top = obs.topCandidates(1).first {
                                 observed.append((top.string, obs.boundingBox.midX, obs.boundingBox.midY))
                             }
                         }
                     }
-                    request.recognitionLevel       = .accurate
-                    request.usesLanguageCorrection = true
-                    request.recognitionLanguages   = ["id-ID", "en-US"]
-                    request.minimumTextHeight      = 0.015
+                    req.recognitionLevel       = .accurate
+                    req.usesLanguageCorrection = true
+                    req.recognitionLanguages   = ["id-ID", "en-US"]
+                    req.minimumTextHeight      = 0.015
+                    try? VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([req])
 
-                    let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-                    try? handler.perform([request])
-
-                    // Merge observations on the same horizontal line, sort left→right
                     let yThreshold: CGFloat = 0.025
-                    var lineGroups: [[(text: String, x: CGFloat, y: CGFloat)]] = []
+                    var groups: [[(text: String, x: CGFloat, y: CGFloat)]] = []
                     for obs in observed.sorted(by: { $0.y > $1.y }) {
-                        if let idx = lineGroups.indices.first(where: {
-                            !lineGroups[$0].isEmpty &&
-                            abs(lineGroups[$0][0].y - obs.y) < yThreshold
-                        }) {
-                            lineGroups[idx].append(obs)
-                        } else {
-                            lineGroups.append([obs])
-                        }
+                        if let idx = groups.indices.first(where: {
+                            !groups[$0].isEmpty && abs(groups[$0][0].y - obs.y) < yThreshold
+                        }) { groups[idx].append(obs) } else { groups.append([obs]) }
                     }
-
-                    let result = lineGroups
+                    let lines = groups
                         .sorted { ($0.first?.y ?? 0) > ($1.first?.y ?? 0) }
-                        .map { group in group.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
+                        .map { g in g.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
                         .filter { !$0.isEmpty }
-
-                    continuation.resume(returning: result)
+                    cont.resume(returning: lines)
                 }
             }
 
-            // ── Step 2: Try Gemini AI first, fall back to SmartBillParser ──────
+            // ── Step 2: Gemini reads the IMAGE directly (multimodal) ───────────
             let billName: String
             let total: String
             let items: [(name: String, price: Double)]
             let adjustments: [(name: String, amount: Double)]
+            let usedAI: Bool
 
             do {
-                let result = try await GeminiParser.parse(lines: lines)
-                billName    = result.billName ?? SmartBillParser.extractBillName(from: lines) ?? "Scanned Bill"
-                total       = result.total ?? SmartBillParser.extractBestTotal(from: lines) ?? ""
-                // If Gemini returned items use them; otherwise fall back
+                // Pass the original image + OCR as a hint
+                let result = try await GeminiParser.parse(image: image, ocrLines: ocrLines)
+                usedAI      = result.usedAI
+
+                billName    = result.billName?.isEmpty == false
+                    ? result.billName!
+                    : (SmartBillParser.extractBillName(from: ocrLines) ?? "Scanned Bill")
+
+                total       = result.total ?? SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
+
                 if !result.items.isEmpty {
                     items       = result.items
                     adjustments = result.adjustments.isEmpty
-                        ? SmartBillParser.extractAdjustments(from: lines)
+                        ? SmartBillParser.extractAdjustments(from: ocrLines)
                         : result.adjustments
                 } else {
-                    items       = SmartBillParser.extractItems(from: lines)
-                    adjustments = SmartBillParser.extractAdjustments(from: lines)
+                    // Gemini returned nothing useful — fall back
+                    items       = SmartBillParser.extractItems(from: ocrLines)
+                    adjustments = SmartBillParser.extractAdjustments(from: ocrLines)
                 }
             } catch {
-                // Gemini unavailable / rate-limited → use local parser
-                billName    = SmartBillParser.extractBillName(from: lines) ?? "Scanned Bill"
-                total       = SmartBillParser.extractBestTotal(from: lines) ?? ""
-                items       = SmartBillParser.extractItems(from: lines)
-                adjustments = SmartBillParser.extractAdjustments(from: lines)
+                // Network error / rate-limit → local fallback
+                usedAI      = false
+                billName    = SmartBillParser.extractBillName(from: ocrLines) ?? "Scanned Bill"
+                total       = SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
+                items       = SmartBillParser.extractItems(from: ocrLines)
+                adjustments = SmartBillParser.extractAdjustments(from: ocrLines)
             }
 
-            // ── Step 3: Navigate ───────────────────────────────────────────────
+            // ── Step 3: Navigate + show debug toast ───────────────────────────
             await MainActor.run {
                 LoadingState.shared.isProcessingScan = false
                 let data = ScannedBillData(
@@ -141,6 +156,16 @@ struct HomeView: View {
                     adjustments: adjustments
                 )
                 router.push(.scanReview(data))
+
+                // Brief toast so you can see which engine was used
+                withAnimation {
+                    scanToast = usedAI
+                        ? "✨ Parsed by Gemini AI (\(items.count) items)"
+                        : "⚠️ AI unavailable — used local parser (\(items.count) items)"
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    withAnimation { scanToast = nil }
+                }
             }
         }
     }
