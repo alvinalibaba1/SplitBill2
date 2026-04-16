@@ -11,6 +11,7 @@ struct ScannedBillData: Identifiable, Hashable {
     let total: String
     let items: [(name: String, price: Double)]
     let adjustments: [(name: String, amount: Double)]
+    var parsedByAI: Bool = false   // true = Gemini answered
 
     static func == (lhs: ScannedBillData, rhs: ScannedBillData) -> Bool {
         lhs.id == rhs.id

@@ -29,20 +29,35 @@ struct ScanReviewView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
 
-                    // MARK: - Banner
+                    // MARK: - AI / OCR Banner
                     HStack(spacing: 10) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundColor(Color.appSecondary)
+                        Image(systemName: scannedData.parsedByAI ? "sparkles" : "doc.text.viewfinder")
+                            .foregroundColor(scannedData.parsedByAI ? Color.appPrimary : Color.appSecondary)
                             .font(AppTheme.Fonts.inter(15))
-                        Text("Tap an item to edit, swipe to delete, or add missing ones.")
+                        Text(scannedData.parsedByAI
+                             ? "Parsed by Gemini AI — tap to edit, swipe to delete."
+                             : "Scanned locally — tap to edit, swipe to delete.")
                             .font(AppTheme.Fonts.inter(13, weight: .medium))
-                            .foregroundColor(Color.appSecondary)
+                            .foregroundColor(scannedData.parsedByAI ? Color.appPrimary : Color.appSecondary)
                         Spacer()
+                        if scannedData.parsedByAI {
+                            Text("AI")
+                                .font(AppTheme.Fonts.inter(10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Color.appPrimary)
+                                .clipShape(Capsule())
+                        }
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.appSecondary.opacity(0.08))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.appSecondary.opacity(0.2), lineWidth: 1))
+                    .background(scannedData.parsedByAI
+                                ? Color.appPrimary.opacity(0.07)
+                                : Color.appSecondary.opacity(0.08))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(
+                        scannedData.parsedByAI ? Color.appPrimary.opacity(0.25) : Color.appSecondary.opacity(0.2),
+                        lineWidth: 1))
                     .cornerRadius(10)
                     .padding(.horizontal, 16)
                     .padding(.top, 16)

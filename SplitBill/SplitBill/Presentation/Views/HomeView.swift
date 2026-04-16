@@ -19,7 +19,6 @@ struct HomeView: View {
     @State private var showCamera = false
     @State private var showOweSummary = false
     @State private var haptics = UIImpactFeedbackGenerator(style: .medium)
-    @State private var scanToast: String? = nil
 
     var body: some View {
         ZStack {
@@ -36,21 +35,6 @@ struct HomeView: View {
             .padding(.top, 10)
             .padding(.bottom, 16)
 
-            // AI / fallback toast
-            if let toast = scanToast {
-                VStack {
-                    Spacer()
-                    Text(toast)
-                        .font(AppTheme.Fonts.inter(13, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color.black.opacity(0.75))
-                        .clipShape(Capsule())
-                        .padding(.bottom, 32)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
         }
         .navigationTitle("")
         .navigationBarHidden(true)
@@ -144,28 +128,20 @@ struct HomeView: View {
                 total       = SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
                 items       = SmartBillParser.extractItems(from: ocrLines)
                 adjustments = SmartBillParser.extractAdjustments(from: ocrLines)
+                print("[GeminiParser] ❌ Error: \(error)")
             }
 
-            // ── Step 3: Navigate + show debug toast ───────────────────────────
+            // ── Step 3: Navigate ──────────────────────────────────────────────
             await MainActor.run {
                 LoadingState.shared.isProcessingScan = false
-                let data = ScannedBillData(
+                var data = ScannedBillData(
                     billName: billName,
                     total: total,
                     items: items,
                     adjustments: adjustments
                 )
+                data.parsedByAI = usedAI
                 router.push(.scanReview(data))
-
-                // Brief toast so you can see which engine was used
-                withAnimation {
-                    scanToast = usedAI
-                        ? "✨ Parsed by Gemini AI (\(items.count) items)"
-                        : "⚠️ AI unavailable — used local parser (\(items.count) items)"
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    withAnimation { scanToast = nil }
-                }
             }
         }
     }

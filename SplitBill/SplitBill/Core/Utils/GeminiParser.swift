@@ -116,11 +116,13 @@ struct GeminiParser {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let body = String(data: data, encoding: .utf8) ?? ""
+            let code   = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let body   = String(data: data, encoding: .utf8) ?? "(no body)"
+            print("[GeminiParser] ❌ HTTP \(code): \(body.prefix(300))")
             throw GeminiError.badResponse(code, body)
         }
 
+        print("[GeminiParser] ✅ HTTP 200 — parsing response (\(data.count) bytes)")
         return try parseResponse(data)
     }
 
