@@ -196,3 +196,14 @@ struct BankListSheet: View {
         number.count <= 4 ? number : "•••• \(number.suffix(4))"
     }
 }
+
+#Preview("With Accounts") {
+    BankListSheet(bankAccounts: .constant([
+        BankAccount(bankName: "BCA",     accountNumber: "1234567890", accountName: "Alvin R."),
+        BankAccount(bankName: "Mandiri", accountNumber: "9876543210", accountName: "Alvin R.")
+    ]))
+}
+
+#Preview("Empty") {
+    BankListSheet(bankAccounts: .constant([]))
+}

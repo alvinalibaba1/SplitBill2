@@ -63,3 +63,9 @@ struct AmountInputView: View {
         }
     }
 }
+
+#Preview {
+    AmountInputView(amount: .constant("150000"), placeholder: "0")
+        .padding()
+        .background(Color.appBackground)
+}

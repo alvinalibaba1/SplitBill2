@@ -1,6 +1,6 @@
 //
 //  HistoryDetailView.swift
-//  SplitBill
+//  SplitBill — redesigned to match ResultView style
 //
 
 import SwiftUI
@@ -10,9 +10,10 @@ struct HistoryDetailView: View {
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @State private var showShare    = false
+    @State private var showShare   = false
     @State private var shareItems: [Any] = []
     @State private var justMarkedId: UUID? = nil
+    @State private var appeared    = false
 
     private var bankAccounts: [BankAccount] { BankAccountStore.load() }
 
@@ -21,15 +22,11 @@ struct HistoryDetailView: View {
     }
 
     private var unpaidPeople: [HistoryPerson] { liveBill.people.filter { !$0.isPaid } }
-    private var paidPeople: [HistoryPerson]   { liveBill.people.filter {  $0.isPaid } }
+    private var paidPeople:   [HistoryPerson] { liveBill.people.filter {  $0.isPaid } }
     private var allPaid: Bool { unpaidPeople.isEmpty }
 
-    private var unpaidTotal: Double {
-        unpaidPeople.reduce(0) { $0 + $1.amount }
-    }
-    private var paidTotal: Double {
-        paidPeople.reduce(0) { $0 + $1.amount }
-    }
+    private var unpaidTotal: Double { unpaidPeople.reduce(0) { $0 + $1.amount } }
+    private var paidTotal:   Double { paidPeople.reduce(0)   { $0 + $1.amount } }
     private var progress: Double {
         guard liveBill.totalAmount > 0 else { return 0 }
         return paidTotal / liveBill.totalAmount
@@ -41,7 +38,7 @@ struct HistoryDetailView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
-                    heroCard
+                    totalCard
                     progressCard
                     if !unpaidPeople.isEmpty {
                         peopleSection(
@@ -62,6 +59,11 @@ struct HistoryDetailView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
+            .onAppear {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05)) {
+                    appeared = true
+                }
+            }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -79,94 +81,117 @@ struct HistoryDetailView: View {
         }
     }
 
-    // MARK: - Hero Card
+    // MARK: - Total Card (matches ResultView style)
 
-    private var heroCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Title + date row
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(liveBill.title.isEmpty ? "history.untitled".localized : liveBill.title)
-                        .roundedFont(22, weight: .bold)
-                        .foregroundColor(Color.textPrimary)
+    private var totalCard: some View {
+        VStack(spacing: 0) {
+            // Purple gradient header
+            VStack(spacing: 8) {
+                // Title + settled badge
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(liveBill.title.isEmpty ? "history.untitled".localized : liveBill.title)
+                            .font(AppTheme.Fonts.inter(20, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
 
-                    Text(liveBill.formattedDate)
-                        .roundedFont(13, weight: .regular)
-                        .foregroundColor(Color.textSecondary)
-                }
-
-                Spacer()
-
-                if allPaid {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(AppTheme.Fonts.inter(16))
-                            .foregroundColor(.green)
-                        Text("detail.settled".localized)
-                            .roundedFont(13, weight: .semibold)
-                            .foregroundColor(Color.textPrimary)
+                        Text(liveBill.formattedDate)
+                            .font(AppTheme.Fonts.inter(12, weight: .regular))
+                            .foregroundColor(.white.opacity(0.65))
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.green.opacity(0.1))
-                    .clipShape(Capsule())
-                    .transition(.scale.combined(with: .opacity))
+
+                    Spacer()
+
+                    if allPaid {
+                        HStack(spacing: 5) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(AppTheme.Fonts.inter(13))
+                            Text("detail.settled".localized)
+                                .font(AppTheme.Fonts.inter(12, weight: .semibold))
+                        }
+                        .foregroundColor(Color(hex: "34D399"))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: "34D399").opacity(0.18))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color(hex: "34D399").opacity(0.35), lineWidth: 1))
+                        .transition(.scale.combined(with: .opacity))
+                    }
                 }
+
+                // Big total amount
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    Text(liveBill.totalAmount.toCurrency())
+                        .font(AppTheme.Fonts.inter(36, weight: .black))
+                        .foregroundColor(.white)
+
+                    Spacer()
+                }
+
+                // Subline
+                Text("\(liveBill.people.count) \("detail.people".localized)  ·  Avg \((liveBill.totalAmount / Double(max(liveBill.people.count, 1))).toCurrency())")
+                    .font(AppTheme.Fonts.inter(12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.65))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
-            .padding(.bottom, 16)
+            .padding(.bottom, 22)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "6C63F5"), Color(hex: "9189F7")],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
 
-            Divider()
-                .background(Color.textSecondary.opacity(0.1))
-                .padding(.horizontal, 20)
-
-            // Stats row
+            // Stats strip
             HStack(spacing: 0) {
                 statCell(
-                    label: "detail.total.bill".localized,
-                    value: liveBill.totalAmount.toCurrency(),
-                    valueColor: Color.textPrimary
-                )
-
-                Rectangle()
-                    .fill(Color.textSecondary.opacity(0.1))
-                    .frame(width: 1, height: 40)
-
-                statCell(
+                    icon: "hourglass",
                     label: "detail.still.owed".localized,
                     value: allPaid ? "—" : unpaidTotal.toCurrency(),
                     valueColor: allPaid ? Color.textSecondary : Color.appPrimary
                 )
 
-                Rectangle()
-                    .fill(Color.textSecondary.opacity(0.1))
-                    .frame(width: 1, height: 40)
+                Divider().frame(height: 36)
 
                 statCell(
+                    icon: "checkmark.circle",
+                    label: "detail.paid.label".localized,
+                    value: paidTotal > 0 ? paidTotal.toCurrency() : "—",
+                    valueColor: paidTotal > 0 ? Color(hex: "34D399") : Color.textSecondary
+                )
+
+                Divider().frame(height: 36)
+
+                statCell(
+                    icon: "person.2",
                     label: "detail.people".localized,
                     value: "\(liveBill.people.count)",
                     valueColor: Color.textPrimary
                 )
             }
-            .padding(.vertical, 16)
+            .padding(.vertical, 14)
+            .background(Color.appCard)
         }
-        .background(Color.appSurface)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: Color.black.opacity(0.06), radius: 14, x: 0, y: 4)
+        .shadow(color: Color(hex: "6C63F5").opacity(0.3), radius: 20, x: 0, y: 8)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 12)
     }
 
-    private func statCell(label: String, value: String, valueColor: Color) -> some View {
+    private func statCell(icon: String, label: String, value: String, valueColor: Color) -> some View {
         VStack(spacing: 4) {
             Text(label)
-                .roundedFont(10, weight: .semibold)
+                .font(AppTheme.Fonts.inter(10, weight: .semibold))
                 .foregroundColor(Color.textSecondary)
-                .tracking(0.5)
+                .tracking(0.4)
             Text(value)
-                .roundedFont(15, weight: .bold)
+                .font(AppTheme.Fonts.inter(14, weight: .bold))
                 .foregroundColor(valueColor)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity)
     }
@@ -177,14 +202,14 @@ struct HistoryDetailView: View {
         VStack(spacing: 12) {
             HStack {
                 Text("detail.progress".localized)
-                    .roundedFont(14, weight: .semibold)
+                    .font(AppTheme.Fonts.inter(13, weight: .semibold))
                     .foregroundColor(Color.textPrimary)
 
                 Spacer()
 
                 Text("\(Int(progress * 100))%")
-                    .roundedFont(14, weight: .bold)
-                    .foregroundColor(Color.appPrimary)
+                    .font(AppTheme.Fonts.inter(13, weight: .bold))
+                    .foregroundColor(allPaid ? Color(hex: "34D399") : Color.appPrimary)
                     .contentTransition(.numericText())
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: progress)
             }
@@ -194,28 +219,31 @@ struct HistoryDetailView: View {
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color.textSecondary.opacity(0.1))
-                        .frame(height: 10)
+                        .frame(height: 8)
 
                     RoundedRectangle(cornerRadius: 6)
                         .fill(
-                            progress >= 1
-                            ? LinearGradient(colors: [Color.appPrimary, Color.appPrimary.opacity(0.7)], startPoint: .leading, endPoint: .trailing)
-                            : LinearGradient(colors: [Color.appPrimary, Color.appPrimary.opacity(0.5)], startPoint: .leading, endPoint: .trailing)
+                            LinearGradient(
+                                colors: allPaid
+                                    ? [Color(hex: "34D399"), Color(hex: "34D399").opacity(0.7)]
+                                    : [Color(hex: "6C63F5"), Color(hex: "9189F7")],
+                                startPoint: .leading, endPoint: .trailing
+                            )
                         )
-                        .frame(width: geo.size.width * CGFloat(min(progress, 1.0)), height: 10)
+                        .frame(width: appeared ? geo.size.width * CGFloat(min(progress, 1.0)) : 0, height: 8)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.75).delay(0.2), value: appeared)
                         .animation(.spring(response: 0.5, dampingFraction: 0.75), value: progress)
                 }
             }
-            .frame(height: 10)
+            .frame(height: 8)
 
-            // Paid vs remaining
             HStack {
                 HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(AppTheme.Fonts.inter(11))
-                        .foregroundColor(.green)
+                    Circle()
+                        .fill(Color(hex: "34D399"))
+                        .frame(width: 7, height: 7)
                     Text("\("detail.paid.label".localized) \(paidTotal.toCurrency())")
-                        .roundedFont(12, weight: .medium)
+                        .font(AppTheme.Fonts.inter(12, weight: .medium))
                         .foregroundColor(Color.textSecondary)
                 }
 
@@ -227,102 +255,101 @@ struct HistoryDetailView: View {
                             .fill(Color.appPrimary.opacity(0.5))
                             .frame(width: 7, height: 7)
                         Text("\("detail.remaining".localized) \(unpaidTotal.toCurrency())")
-                            .roundedFont(12, weight: .medium)
+                            .font(AppTheme.Fonts.inter(12, weight: .medium))
                             .foregroundColor(Color.textSecondary)
                     }
                 }
             }
         }
         .padding(16)
-        .background(Color.appSurface)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 3)
+        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 2)
     }
 
     // MARK: - People Section
 
     @ViewBuilder
     private func peopleSection(title: String, people: [HistoryPerson], isPaidSection: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            // Section label (matches ResultView style)
             HStack {
                 Text(title)
-                    .roundedFont(11, weight: .semibold)
+                    .font(AppTheme.Fonts.inter(11, weight: .semibold))
                     .foregroundColor(isPaidSection ? Color.textSecondary : Color.appPrimary)
                     .tracking(0.8)
 
                 Spacer()
 
-                Text(isPaidSection
-                     ? paidTotal.toCurrency()
-                     : unpaidTotal.toCurrency())
-                    .roundedFont(12, weight: .semibold)
+                Text(isPaidSection ? paidTotal.toCurrency() : unpaidTotal.toCurrency())
+                    .font(AppTheme.Fonts.inter(12, weight: .semibold))
                     .foregroundColor(isPaidSection ? Color.textSecondary : Color.appPrimary)
             }
-            .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
-                ForEach(people) { person in
-                    personRow(person, isPaidSection: isPaidSection)
+                ForEach(Array(people.enumerated()), id: \.element.id) { i, person in
+                    personRow(person, index: i, isPaidSection: isPaidSection)
 
                     if person.id != people.last?.id {
                         Divider()
-                            .background(Color.textSecondary.opacity(0.08))
-                            .padding(.leading, 68)
+                            .padding(.leading, 70)
                     }
                 }
             }
-            .background(Color.appSurface)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+            .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 2)
         }
     }
 
     @ViewBuilder
-    private func personRow(_ person: HistoryPerson, isPaidSection: Bool) -> some View {
-        let avatarColors: [Color] = [.appPrimary, Color(hex: "A29BFE"), Color(hex: "FD79A8"), .teal, .indigo, Color(hex: "FDCB6E")]
-        let colorIndex = abs(person.name.hashValue) % avatarColors.count
-        let avatarColor: Color = isPaidSection ? Color.textSecondary : avatarColors[colorIndex]
+    private func personRow(_ person: HistoryPerson, index: Int, isPaidSection: Bool) -> some View {
+        let color = avatarColor(name: person.name, isPaid: isPaidSection)
 
         HStack(spacing: 14) {
-            // Avatar
-            ZStack {
-                Circle()
-                    .fill(avatarColor.opacity(isPaidSection ? 0.08 : 0.14))
-                    .frame(width: 46, height: 46)
-
-                if isPaidSection {
-                    Image(systemName: "checkmark")
-                        .font(AppTheme.Fonts.inter(15, weight: .bold))
-                        .foregroundColor(.green)
-                } else {
-                    Text(String(person.name.prefix(1)).uppercased())
-                        .roundedFont(18, weight: .bold)
-                        .foregroundColor(avatarColor)
-                }
-            }
+            // Avatar — matches ResultView style
+            Circle()
+                .fill(color.opacity(isPaidSection ? 0.08 : 0.18))
+                .frame(width: 44, height: 44)
+                .overlay(Circle().stroke(color.opacity(isPaidSection ? 0.15 : 0.3), lineWidth: 1.5))
+                .overlay(
+                    Group {
+                        if isPaidSection {
+                            Image(systemName: "checkmark")
+                                .font(AppTheme.Fonts.inter(14, weight: .bold))
+                                .foregroundColor(Color(hex: "34D399"))
+                        } else {
+                            Text(String(person.name.prefix(1)).uppercased())
+                                .font(AppTheme.Fonts.inter(16, weight: .bold))
+                                .foregroundColor(color)
+                        }
+                    }
+                )
 
             // Name + amount
             VStack(alignment: .leading, spacing: 3) {
                 Text(person.name)
-                    .roundedFont(15, weight: .semibold)
+                    .font(AppTheme.Fonts.inter(15, weight: .semibold))
                     .foregroundColor(isPaidSection ? Color.textSecondary : Color.textPrimary)
                     .strikethrough(isPaidSection, color: Color.textSecondary.opacity(0.4))
 
                 Text(person.amount.toCurrency())
-                    .roundedFont(13, weight: .medium)
-                    .foregroundColor(isPaidSection ? Color.textSecondary.opacity(0.6) : Color.appPrimary)
+                    .font(AppTheme.Fonts.inter(13, weight: .medium))
+                    .foregroundColor(isPaidSection
+                                     ? Color.textSecondary.opacity(0.6)
+                                     : Color.appPrimary)
             }
 
             Spacer()
 
-            // Action button
             markPaidButton(person: person, isPaidSection: isPaidSection)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .opacity(isPaidSection ? 0.75 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isPaidSection)
+        .opacity(isPaidSection ? 0.7 : 1.0)
     }
+
+    // MARK: - Mark Paid Button
 
     @ViewBuilder
     private func markPaidButton(person: HistoryPerson, isPaidSection: Bool) -> some View {
@@ -341,18 +368,16 @@ struct HistoryDetailView: View {
             }
         }) {
             if justMarkedId == person.id {
-                // Flash confirm state
                 Image(systemName: isPaidSection ? "arrow.uturn.left.circle.fill" : "checkmark.circle.fill")
-                    .font(AppTheme.Fonts.inter(24))
-                    .foregroundColor(isPaidSection ? Color.appPrimary : .green)
+                    .font(AppTheme.Fonts.inter(26))
+                    .foregroundColor(isPaidSection ? Color.appPrimary : Color(hex: "34D399"))
                     .transition(.scale.combined(with: .opacity))
             } else if isPaidSection {
-                // Undo button
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.uturn.left")
-                        .font(AppTheme.Fonts.inter(11, weight: .medium))
+                        .font(AppTheme.Fonts.inter(10, weight: .medium))
                     Text("detail.undo".localized)
-                        .roundedFont(12, weight: .medium)
+                        .font(AppTheme.Fonts.inter(12, weight: .medium))
                 }
                 .foregroundColor(Color.textSecondary)
                 .padding(.horizontal, 12)
@@ -360,22 +385,38 @@ struct HistoryDetailView: View {
                 .background(Color.textSecondary.opacity(0.1))
                 .clipShape(Capsule())
             } else {
-                // Mark paid button
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
                         .font(AppTheme.Fonts.inter(11, weight: .bold))
                     Text("detail.mark.paid".localized)
-                        .roundedFont(12, weight: .semibold)
+                        .font(AppTheme.Fonts.inter(12, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(Color.green)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "34D399"), Color(hex: "10B981")],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
                 .clipShape(Capsule())
-                .shadow(color: Color.green.opacity(0.3), radius: 6, y: 2)
+                .shadow(color: Color(hex: "34D399").opacity(0.35), radius: 6, y: 2)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle(scale: 0.93))
+    }
+
+    // MARK: - Helpers
+
+    private func avatarColor(name: String, isPaid: Bool) -> Color {
+        if isPaid { return Color.textSecondary }
+        let colors: [Color] = [
+            Color(hex: "6C63F5"), Color(hex: "9189F7"),
+            Color(hex: "E84393"), Color(hex: "F59E0B"),
+            Color(hex: "34D399"), Color(hex: "3B82F6"),
+        ]
+        return colors[abs(name.hashValue) % colors.count]
     }
 
     // MARK: - Share
@@ -384,22 +425,16 @@ struct HistoryDetailView: View {
         var msg = "🧾 \(liveBill.title.isEmpty ? "Bill" : liveBill.title)\n"
         msg += "📅 \(liveBill.formattedDate)\n"
         msg += "💰 Total: \(liveBill.totalAmount.toCurrency())\n\n"
-
         if !unpaidPeople.isEmpty {
             msg += "⏳ Still owes:\n"
-            for p in unpaidPeople {
-                msg += "  · \(p.name)  →  \(p.amount.toCurrency())\n"
-            }
+            for p in unpaidPeople { msg += "  · \(p.name)  →  \(p.amount.toCurrency())\n" }
             msg += "\n"
         }
         if !paidPeople.isEmpty {
             msg += "✅ Already paid:\n"
-            for p in paidPeople {
-                msg += "  · \(p.name)  →  \(p.amount.toCurrency())\n"
-            }
+            for p in paidPeople { msg += "  · \(p.name)  →  \(p.amount.toCurrency())\n" }
             msg += "\n"
         }
-
         if !bankAccounts.isEmpty {
             msg += "💳 Transfer to:\n"
             for bank in bankAccounts {
@@ -409,7 +444,6 @@ struct HistoryDetailView: View {
                 msg += "  \(bank.bankName)  ·  \(masked)  ·  \(bank.accountName)\n"
             }
         }
-
         return msg
     }
 
@@ -423,18 +457,36 @@ struct HistoryDetailView: View {
     }
 }
 
-#Preview {
+// MARK: - Preview
+
+#Preview("Unpaid") {
     NavigationStack {
         HistoryDetailView(
             bill: BillHistory(
+                title: "Makan Siang Bareng",
                 totalAmount: 340000,
                 people: [
-                    Person(name: "Alvin",  amount: 170000),
-                    Person(name: "Budi",   amount: 85000),
-                    Person(name: "Siti",   amount: 85000)
+                    Person(name: "Alvin",  amount: 120000),
+                    Person(name: "Budi",   amount: 115000),
+                    Person(name: "Siti",   amount: 105000)
                 ],
                 splitAmount: 113333
             )
         )
+    }
+}
+
+#Preview("All Settled") {
+    let bill = BillHistory(
+        title: "Kopi Darat",
+        totalAmount: 180000,
+        people: [
+            Person(name: "Dian", amount: 90000),
+            Person(name: "Rani", amount: 90000)
+        ],
+        splitAmount: 90000
+    )
+    return NavigationStack {
+        HistoryDetailView(bill: bill)
     }
 }

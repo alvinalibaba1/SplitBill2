@@ -65,6 +65,18 @@ struct ConfettiView: View {
 
 // MARK: - Generator
 
+// MARK: - Preview
+
+#Preview {
+    ZStack {
+        Color.appBackground.ignoresSafeArea()
+        ConfettiView(particles: makeConfettiParticles())
+        Text("🎉 Split Done!")
+            .roundedFont(24, weight: .bold)
+            .foregroundColor(.white)
+    }
+}
+
 func makeConfettiParticles() -> [ConfettiParticle] {
     let colors: [Color] = [
         Color(hex: "7C6FF7"), Color(hex: "FB7185"),

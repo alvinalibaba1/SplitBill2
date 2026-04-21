@@ -38,3 +38,12 @@ struct AnimatedButton: View {
         .disabled(!isEnabled)
     }
 }
+
+#Preview {
+    VStack(spacing: 16) {
+        AnimatedButton(title: "Calculate Split", action: {})
+        AnimatedButton(title: "Disabled", action: {}, isEnabled: false)
+    }
+    .padding()
+    .background(Color.appBackground)
+}

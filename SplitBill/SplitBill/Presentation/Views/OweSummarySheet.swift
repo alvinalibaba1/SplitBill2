@@ -150,3 +150,34 @@ struct OweSummarySheet: View {
         .padding(.vertical, 60)
     }
 }
+
+#Preview("With Bills") {
+    OweSummarySheet(
+        history: [
+            BillHistory(
+                title: "Makan Siang",
+                totalAmount: 150000,
+                people: [
+                    Person(name: "Alvin",  amount: 75000),
+                    Person(name: "Budi",   amount: 45000),
+                    Person(name: "Siti",   amount: 30000)
+                ],
+                splitAmount: 50000
+            ),
+            BillHistory(
+                title: "Kopi Cantik",
+                totalAmount: 88000,
+                people: [
+                    Person(name: "Dian", amount: 44000),
+                    Person(name: "Rani", amount: 44000)
+                ],
+                splitAmount: 44000
+            )
+        ],
+        onBillTap: { _ in }
+    )
+}
+
+#Preview("Empty") {
+    OweSummarySheet(history: [], onBillTap: { _ in })
+}

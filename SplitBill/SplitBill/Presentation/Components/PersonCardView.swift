@@ -60,3 +60,20 @@ struct PersonCardView: View {
         }
     }
 }
+
+#Preview {
+    VStack(spacing: 12) {
+        PersonCardView(
+            person: Person(name: "Alvin", amount: 75000),
+            onDelete: {},
+            onTap: {}
+        )
+        PersonCardView(
+            person: Person(name: "Budi Santoso", amount: 120000),
+            onDelete: {},
+            onTap: {}
+        )
+    }
+    .padding()
+    .background(Color.appBackground)
+}

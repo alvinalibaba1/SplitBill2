@@ -77,3 +77,8 @@ struct LanguagePickerSheet: View {
         .background(Color.appBackground.ignoresSafeArea())
     }
 }
+
+#Preview {
+    LanguagePickerSheet()
+        .presentationDetents([.medium])
+}
