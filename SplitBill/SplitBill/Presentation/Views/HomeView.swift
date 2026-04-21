@@ -19,6 +19,7 @@ struct HomeView: View {
     @State private var showCamera = false
     @State private var showOweSummary = false
     @State private var haptics = UIImpactFeedbackGenerator(style: .medium)
+    @State private var appeared = false
 
     var body: some View {
         ZStack {
@@ -34,6 +35,11 @@ struct HomeView: View {
             .padding(.horizontal)
             .padding(.top, 10)
             .padding(.bottom, 16)
+            .onAppear {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1)) {
+                    appeared = true
+                }
+            }
 
         }
         .navigationTitle("")
@@ -248,13 +254,18 @@ struct HomeView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
-            .background(Color.appSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.appPrimary.opacity(0.08), radius: 12, x: 0, y: 4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.appPrimary.opacity(0.08), lineWidth: 1)
+            .background(
+                LinearGradient(
+                    colors: [Color.appPrimary.opacity(0.13), Color.appSecondary.opacity(0.06)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
             )
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(Color.appPrimary.opacity(0.3), lineWidth: 1)
+            )
+            .shadow(color: Color.appPrimary.opacity(0.25), radius: 28, x: 0, y: 0)
         }
         .buttonStyle(.plain)
     }
@@ -282,11 +293,17 @@ struct HomeView: View {
                     .font(AppTheme.Fonts.inter(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(Color.appPrimary)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.appPrimary, Color(hex: "6358E8")],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
                     .foregroundColor(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: Color.appPrimary.opacity(0.3), radius: 10, y: 5)
+                    .shadow(color: Color.appPrimary.opacity(0.4), radius: 14, x: 0, y: 6)
             }
+            .buttonStyle(PressableButtonStyle())
 
             Button(action: {
                 haptics.impactOccurred()
@@ -297,13 +314,14 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
                     .foregroundColor(Color.appPrimary)
-                    .background(Color.appPrimary.opacity(0.06))
+                    .background(Color.appPrimary.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.appPrimary, lineWidth: 1.5)
+                            .stroke(Color.appPrimary.opacity(0.6), lineWidth: 1.5)
                     )
             }
+            .buttonStyle(PressableButtonStyle())
         }
     }
 
@@ -346,11 +364,18 @@ struct HomeView: View {
                 )
             } else {
                 LazyVStack(spacing: 12) {
-                    ForEach(viewModel.history.prefix(3)) { bill in
+                    ForEach(Array(viewModel.history.prefix(3).enumerated()), id: \.element.id) { i, bill in
                         Button(action: { router.push(.historyDetail(bill)) }) {
                             HistoryCardView(bill: bill, showPaymentStatus: true)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressableButtonStyle())
+                        .opacity(appeared ? 1 : 0)
+                        .offset(y: appeared ? 0 : 18)
+                        .animation(
+                            .spring(response: 0.42, dampingFraction: 0.75)
+                            .delay(Double(i) * 0.07),
+                            value: appeared
+                        )
                     }
                 }
             }
