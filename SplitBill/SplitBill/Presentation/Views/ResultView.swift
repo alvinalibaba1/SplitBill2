@@ -14,12 +14,15 @@ struct ResultView: View {
     @State private var showCheckmark = false
     @State private var showShare = false
     @State private var shareItems: [Any] = []
-    // ✅ Copy feedback — button label switches to "Copied!" for 2s then resets
     @State private var showCopied = false
+    @State private var particles: [ConfettiParticle] = []
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.appBackground.ignoresSafeArea()
+
+            // 🎉 Confetti — above background, below scroll content
+            ConfettiView(particles: particles)
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
@@ -46,6 +49,7 @@ struct ResultView: View {
         .navigationTitle("")
         .navigationBarHidden(true)
         .onAppear {
+            particles = makeConfettiParticles()
             withAnimation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.1)) {
                 showCheckmark = true
             }
