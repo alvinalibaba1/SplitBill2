@@ -295,7 +295,7 @@ struct HomeView: View {
                     .padding(.vertical, 18)
                     .background(
                         LinearGradient(
-                            colors: [Color.appPrimary, Color(hex: "6358E8")],
+                            colors: [Color(hex: "6C63F5"), Color(hex: "5651D8")],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         )
                     )

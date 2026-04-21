@@ -43,21 +43,41 @@ extension Color {
     }
 }
 
-// MARK: - Dark Purple Theme
+// MARK: - Adaptive Purple Theme (dark + light)
 
 extension Color {
     // Backgrounds
-    static let appBackground = Color(hex: "0D0D14")
-    static let appSurface    = Color(hex: "15151F")
-    static let appCard       = Color(hex: "1C1C2A")
+    static let appBackground = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "0D0D14")   // deep dark
+            : UIColor(hex: "F3F2FD")   // light lavender
+    })
+    static let appSurface = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "15151F")
+            : UIColor.white
+    })
+    static let appCard = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "1C1C2A")
+            : UIColor.white
+    })
 
-    // Brand
-    static let appPrimary    = Color(hex: "7C6FF7")
-    static let appSecondary  = Color(hex: "A29BFE")
+    // Brand — same in both modes
+    static let appPrimary   = Color(hex: "6C63F5")
+    static let appSecondary = Color(hex: "A29BFE")
 
     // Text
-    static let textPrimary   = Color(hex: "EEEAF8")
-    static let textSecondary = Color(hex: "8A86AA")
+    static let textPrimary = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "EEEAF8")
+            : UIColor(hex: "0D0B1A")
+    })
+    static let textSecondary = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "8A86AA")
+            : UIColor(hex: "6B6785")
+    })
 }
 
 // MARK: - AppTheme
@@ -66,8 +86,8 @@ struct AppTheme {
 
     struct Colors {
         static let primary      = Color.appPrimary
-        static let primaryDark  = Color(hex: "6358E8")
-        static let primaryLight = Color(hex: "7C6FF7").opacity(0.15)
+        static let primaryDark  = Color(hex: "5651D8")
+        static let primaryLight = Color(hex: "6C63F5").opacity(0.15)
         static let secondary    = Color.appSecondary
         static let background   = Color.appBackground
         static let surface      = Color.appSurface
@@ -113,7 +133,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(height: AppTheme.Dimensions.buttonHeight)
             .background(
                 LinearGradient(
-                    colors: [Color.appPrimary, Color(hex: "6358E8")],
+                    colors: [Color(hex: "6C63F5"), Color(hex: "5651D8")],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -121,7 +141,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .cornerRadius(16)
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.spring(response: 0.14, dampingFraction: 0.6), value: configuration.isPressed)
-            .shadow(color: Color.appPrimary.opacity(0.4), radius: 14, x: 0, y: 6)
+            .shadow(color: Color(hex: "6C63F5").opacity(0.4), radius: 14, x: 0, y: 6)
     }
 }
 
