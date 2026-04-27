@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Vision
+import VisionKit
 
 struct HomeView: View {
 
@@ -45,7 +46,7 @@ struct HomeView: View {
         .navigationTitle("")
         .navigationBarHidden(true)
         .sheet(isPresented: $showCamera) {
-            BillCameraView { image in
+            BillDocumentScanner { image in
                 processImage(image)
             }
             .ignoresSafeArea()
@@ -61,45 +62,14 @@ struct HomeView: View {
 
     // MARK: - OCR + AI Processing
     private func processImage(_ image: UIImage) {
-        guard let cgImage = image.cgImage else { return }
+        // Normalize EXIF orientation once — used for both Vision and Gemini paths
+        let normalized = image.normalizedForReceipt()
+        guard let cgImage = normalized.cgImage else { return }
 
         LoadingState.shared.isProcessingScan = true
 
         Task {
-            // ── Step 1: Vision OCR (runs in parallel with Gemini as a hint) ───
-            let ocrLines: [String] = await withCheckedContinuation { cont in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    var observed: [(text: String, x: CGFloat, y: CGFloat)] = []
-                    let req = VNRecognizeTextRequest { r, _ in
-                        guard let res = r.results as? [VNRecognizedTextObservation] else { return }
-                        for obs in res {
-                            if let top = obs.topCandidates(1).first {
-                                observed.append((top.string, obs.boundingBox.midX, obs.boundingBox.midY))
-                            }
-                        }
-                    }
-                    req.recognitionLevel       = .accurate
-                    req.usesLanguageCorrection = true
-                    req.recognitionLanguages   = ["id-ID", "en-US"]
-                    req.minimumTextHeight      = 0.015
-                    try? VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([req])
-
-                    let yThreshold: CGFloat = 0.025
-                    var groups: [[(text: String, x: CGFloat, y: CGFloat)]] = []
-                    for obs in observed.sorted(by: { $0.y > $1.y }) {
-                        if let idx = groups.indices.first(where: {
-                            !groups[$0].isEmpty && abs(groups[$0][0].y - obs.y) < yThreshold
-                        }) { groups[idx].append(obs) } else { groups.append([obs]) }
-                    }
-                    let lines = groups
-                        .sorted { ($0.first?.y ?? 0) > ($1.first?.y ?? 0) }
-                        .map { g in g.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
-                        .filter { !$0.isEmpty }
-                    cont.resume(returning: lines)
-                }
-            }
-
-            // ── Step 2: Gemini reads the IMAGE directly (multimodal) ───────────
+            // ── Step 1: Gemini reads the IMAGE directly (multimodal) ──────────
             let billName: String
             let total: String
             let items: [(name: String, price: Double)]
@@ -107,34 +77,34 @@ struct HomeView: View {
             let usedAI: Bool
 
             do {
-                // Pass the original image + OCR as a hint
-                let result = try await GeminiParser.parse(image: image, ocrLines: ocrLines)
-                usedAI      = result.usedAI
+                let result = try await GeminiParser.parse(image: normalized)
+                usedAI = result.usedAI
 
-                billName    = result.billName?.isEmpty == false
-                    ? result.billName!
-                    : (SmartBillParser.extractBillName(from: ocrLines) ?? "Scanned Bill")
-
-                total       = result.total ?? SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
-
+                // If Gemini returned useful data, use it; otherwise fall through to OCR fallback
                 if !result.items.isEmpty {
+                    billName    = result.billName?.isEmpty == false ? result.billName! : "Scanned Bill"
+                    total       = result.total ?? ""
                     items       = result.items
-                    adjustments = result.adjustments.isEmpty
-                        ? SmartBillParser.extractAdjustments(from: ocrLines)
-                        : result.adjustments
+                    adjustments = result.adjustments
                 } else {
-                    // Gemini returned nothing useful — fall back
+                    // Gemini gave no items — run local OCR fallback
+                    let ocrLines = await runOCR(cgImage: cgImage)
+                    billName    = result.billName?.isEmpty == false
+                        ? result.billName!
+                        : (SmartBillParser.extractBillName(from: ocrLines) ?? "Scanned Bill")
+                    total       = result.total ?? SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
                     items       = SmartBillParser.extractItems(from: ocrLines)
                     adjustments = SmartBillParser.extractAdjustments(from: ocrLines)
                 }
             } catch {
-                // Network error / rate-limit → local fallback
+                // Network / rate-limit error after retry → local OCR fallback
+                print("[GeminiParser] ❌ Error: \(error)")
+                let ocrLines = await runOCR(cgImage: cgImage)
                 usedAI      = false
                 billName    = SmartBillParser.extractBillName(from: ocrLines) ?? "Scanned Bill"
                 total       = SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
                 items       = SmartBillParser.extractItems(from: ocrLines)
                 adjustments = SmartBillParser.extractAdjustments(from: ocrLines)
-                print("[GeminiParser] ❌ Error: \(error)")
             }
 
             // ── Step 3: Navigate ──────────────────────────────────────────────
@@ -148,6 +118,42 @@ struct HomeView: View {
                 )
                 data.parsedByAI = usedAI
                 router.push(.scanReview(data))
+            }
+        }
+    }
+
+    // MARK: - OCR (fallback only)
+
+    private func runOCR(cgImage: CGImage) async -> [String] {
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .userInitiated).async {
+                var observed: [(text: String, x: CGFloat, y: CGFloat)] = []
+                let req = VNRecognizeTextRequest { r, _ in
+                    guard let res = r.results as? [VNRecognizedTextObservation] else { return }
+                    for obs in res {
+                        if let top = obs.topCandidates(1).first {
+                            observed.append((top.string, obs.boundingBox.midX, obs.boundingBox.midY))
+                        }
+                    }
+                }
+                req.recognitionLevel       = .accurate
+                req.usesLanguageCorrection = true
+                req.recognitionLanguages   = ["id-ID", "en-US"]
+                req.minimumTextHeight      = 0.015
+                try? VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([req])
+
+                let yThreshold: CGFloat = 0.025
+                var groups: [[(text: String, x: CGFloat, y: CGFloat)]] = []
+                for obs in observed.sorted(by: { $0.y > $1.y }) {
+                    if let idx = groups.indices.first(where: {
+                        !groups[$0].isEmpty && abs(groups[$0][0].y - obs.y) < yThreshold
+                    }) { groups[idx].append(obs) } else { groups.append([obs]) }
+                }
+                let lines = groups
+                    .sorted { ($0.first?.y ?? 0) > ($1.first?.y ?? 0) }
+                    .map { g in g.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
+                    .filter { !$0.isEmpty }
+                cont.resume(returning: lines)
             }
         }
     }
@@ -383,45 +389,50 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Plain Camera (UIImagePickerController — no filter UI)
-struct BillCameraView: UIViewControllerRepresentable {
+// MARK: - Document Camera (VNDocumentCameraViewController — auto-crops, deskews, enhances)
+
+struct BillDocumentScanner: UIViewControllerRepresentable {
     var onCapture: (UIImage) -> Void
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onCapture: onCapture)
+    func makeCoordinator() -> Coordinator { Coordinator(onCapture: onCapture) }
+
+    func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
+        let vc = VNDocumentCameraViewController()
+        vc.delegate = context.coordinator
+        return vc
     }
 
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.cameraCaptureMode = .photo
-        picker.allowsEditing = false
-        picker.delegate = context.coordinator
-        return picker
-    }
+    func updateUIViewController(_ uiViewController: VNDocumentCameraViewController, context: Context) {}
 
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    class Coordinator: NSObject, VNDocumentCameraViewControllerDelegate {
+        let onCapture: (UIImage) -> Void
+        init(onCapture: @escaping (UIImage) -> Void) { self.onCapture = onCapture }
 
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        var onCapture: (UIImage) -> Void
-
-        init(onCapture: @escaping (UIImage) -> Void) {
-            self.onCapture = onCapture
-        }
-
-        func imagePickerController(
-            _ picker: UIImagePickerController,
-            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
-        ) {
-            picker.dismiss(animated: true)
-            if let image = info[.originalImage] as? UIImage {
-                onCapture(image)
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
+            controller.dismiss(animated: true) {
+                guard scan.pageCount > 0 else { return }
+                self.onCapture(scan.imageOfPage(at: 0))
             }
         }
 
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
+        func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
+            controller.dismiss(animated: true)
         }
+
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
+            controller.dismiss(animated: true)
+        }
+    }
+}
+
+// MARK: - UIImage helper
+
+private extension UIImage {
+    /// Redraws into a new bitmap with .up orientation, correcting EXIF rotation.
+    func normalizedForReceipt() -> UIImage {
+        guard imageOrientation != .up else { return self }
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in draw(in: CGRect(origin: .zero, size: size)) }
     }
 }
 

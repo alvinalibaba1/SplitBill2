@@ -3,9 +3,6 @@
 //  SplitBill
 //
 //  Sends the receipt IMAGE directly to Gemini 2.0 Flash (multimodal).
-//  This is far more accurate than sending OCR text — Gemini reads the
-//  image like a human would, handling columns, fonts, noise, etc.
-//
 //  Free tier: 15 RPM · 1 500 RPD
 //
 
@@ -21,7 +18,7 @@ struct GeminiParser {
         let items: [(name: String, price: Double)]
         let adjustments: [(name: String, amount: Double)]
         let total: String?
-        let usedAI: Bool           // true = Gemini answered, false = fallback
+        let usedAI: Bool
     }
 
     // MARK: - Errors
@@ -35,28 +32,29 @@ struct GeminiParser {
 
     // MARK: - Public API
 
-    /// Sends the receipt image + OCR hint lines to Gemini and returns structured data.
-    /// - Parameters:
-    ///   - image: the original UIImage from the camera
-    ///   - ocrLines: fallback OCR lines (used as a hint in the prompt)
-    static func parse(image: UIImage, ocrLines: [String]) async throws -> ParsedResult {
+    /// Sends the receipt image to Gemini and returns structured data.
+    /// Retries once after 2 s on any error before throwing.
+    static func parse(image: UIImage) async throws -> ParsedResult {
+        // Normalize EXIF orientation, then resize to 768px longest side
+        let resized = image.normalizedOrientation().resizedForGemini(maxSide: 768)
 
-        // Resize to max 1024px on longest side to stay within free-tier limits
-        let resized = image.resizedForGemini(maxSide: 1024)
-
-        // Compress as JPEG — balance quality vs payload size
         guard let jpegData = resized.jpegData(compressionQuality: 0.75) else {
             throw GeminiError.imageEncodingFailed
         }
         let base64 = jpegData.base64EncodedString()
 
-        // OCR hint — helps Gemini correct misread characters
-        let ocrHint = ocrLines.isEmpty ? "" : """
+        do {
+            return try await sendRequest(base64: base64)
+        } catch {
+            print("[GeminiParser] ⚠️ First attempt failed (\(error)) — retrying in 2 s")
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            return try await sendRequest(base64: base64)
+        }
+    }
 
-        Here is raw OCR text extracted from the same receipt (use as a hint, may contain errors):
-        \(ocrLines.joined(separator: "\n"))
-        """
+    // MARK: - Request
 
+    private static func sendRequest(base64: String) async throws -> ParsedResult {
         let prompt = """
         You are an expert receipt parser for Indonesian and English receipts.
         Analyze this receipt image carefully and extract ALL ordered items.
@@ -84,7 +82,7 @@ struct GeminiParser {
         - billName = the restaurant/store name at the top of the receipt
         - total = the final amount paid (Grand Total / Total Bayar / Total)
         - skip: address, phone, cashier name, date/time, table number, thank-you messages
-        - if a field is unknown use null\(ocrHint)
+        - if a field is unknown use null
         """
 
         let body: [String: Any] = [
@@ -108,7 +106,7 @@ struct GeminiParser {
 
         let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=\(Secrets.geminiAPIKey)")!
         var request = URLRequest(url: url)
-        request.httpMethod  = "POST"
+        request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -116,8 +114,8 @@ struct GeminiParser {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            let code   = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let body   = String(data: data, encoding: .utf8) ?? "(no body)"
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let body = String(data: data, encoding: .utf8) ?? "(no body)"
             print("[GeminiParser] ❌ HTTP \(code): \(body.prefix(300))")
             throw GeminiError.badResponse(code, body)
         }
@@ -140,7 +138,6 @@ struct GeminiParser {
             throw GeminiError.noContent
         }
 
-        // Strip accidental markdown fences
         let clean = text
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "```json", with: "")
@@ -154,10 +151,8 @@ struct GeminiParser {
             throw GeminiError.jsonParseFailure(text)
         }
 
-        // billName
         let billName: String? = json["billName"] as? String
 
-        // items
         var items: [(name: String, price: Double)] = []
         if let rawItems = json["items"] as? [[String: Any]] {
             for item in rawItems {
@@ -167,7 +162,6 @@ struct GeminiParser {
             }
         }
 
-        // adjustments
         var adjustments: [(name: String, amount: Double)] = []
         if let rawAdj = json["adjustments"] as? [[String: Any]] {
             for adj in rawAdj {
@@ -177,7 +171,6 @@ struct GeminiParser {
             }
         }
 
-        // total
         let total: String? = {
             if let t = json["total"] as? String, !t.isEmpty, t != "null" { return t }
             if let t = json["total"] as? Double { return String(Int(t)) }
@@ -200,7 +193,6 @@ struct GeminiParser {
         if let v = value as? Double  { return v }
         if let v = value as? Int     { return Double(v) }
         if let v = value as? String  {
-            // strip everything except digits, dot, minus
             let stripped = v.filter { $0.isNumber || $0 == "." || $0 == "-" }
             return Double(stripped) ?? 0
         }
@@ -208,14 +200,21 @@ struct GeminiParser {
     }
 }
 
-// MARK: - UIImage helper
+// MARK: - UIImage helpers
 
 private extension UIImage {
+    /// Redraws the image into a new bitmap with .up orientation, fixing EXIF rotation.
+    func normalizedOrientation() -> UIImage {
+        guard imageOrientation != .up else { return self }
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in draw(in: CGRect(origin: .zero, size: size)) }
+    }
+
     /// Resize so the longest side is ≤ maxSide, preserving aspect ratio.
     func resizedForGemini(maxSide: CGFloat) -> UIImage {
         let w = size.width, h = size.height
         guard w > maxSide || h > maxSide else { return self }
-        let scale  = maxSide / max(w, h)
+        let scale   = maxSide / max(w, h)
         let newSize = CGSize(width: w * scale, height: h * scale)
         let renderer = UIGraphicsImageRenderer(size: newSize)
         return renderer.image { _ in draw(in: CGRect(origin: .zero, size: newSize)) }
