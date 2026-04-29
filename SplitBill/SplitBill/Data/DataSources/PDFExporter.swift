@@ -86,25 +86,59 @@ struct PDFExporter {
                 return size.height
             }
 
-            // MARK: - Header with Gradient Background
+            // MARK: - Header
 
-            // Draw green header background
-            drawRoundedRect(x: 0, y: 0, width: pageWidth, height: 140, radius: 0, fillColor: brandGreen)
+            let headerH: CGFloat = 130
+            drawRoundedRect(x: 0, y: 0, width: pageWidth, height: headerH, radius: 0, fillColor: brandGreen)
 
-            // App branding
-            let brandHeight = drawText("SPLITIN", font: .systemFont(ofSize: 14, weight: .bold), color: .white, x: margin, y: margin, width: pageWidth - 2 * margin)
-
-            // Title
-            let titleHeight = drawText(title.isEmpty ? "Bill Summary" : title, font: .systemFont(ofSize: 28, weight: .bold), color: .white, x: margin, y: margin + brandHeight + 12, width: pageWidth - 2 * margin)
-
-            // Date
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
             let dateStr = formatter.string(from: Date())
-            _ = drawText(dateStr, font: .systemFont(ofSize: 12, weight: .regular), color: UIColor.white.withAlphaComponent(0.9), x: margin, y: margin + brandHeight + titleHeight + 20, width: pageWidth - 2 * margin)
 
-            y = 160
+            // Avatar (left side, vertically centered)
+            let avatarR: CGFloat = 38
+            let avatarCX: CGFloat = margin + avatarR
+            let avatarCY: CGFloat = headerH / 2
+            let avatarRect = CGRect(x: avatarCX - avatarR, y: avatarCY - avatarR, width: avatarR * 2, height: avatarR * 2)
+
+            if let profileImg = ProfileImageStore.load() {
+                // Clip to circle and draw profile photo
+                context.saveGState()
+                UIBezierPath(ovalIn: avatarRect).addClip()
+                profileImg.draw(in: avatarRect)
+                context.restoreGState()
+            } else {
+                // Fallback: white circle with initial
+                context.saveGState()
+                UIColor.white.withAlphaComponent(0.25).setFill()
+                UIBezierPath(ovalIn: avatarRect).fill()
+                context.restoreGState()
+                let initial = String((UserDefaults.standard.string(forKey: "userName") ?? "S").prefix(1)).uppercased()
+                _ = drawText(initial, font: .systemFont(ofSize: 28, weight: .bold), color: .white,
+                             x: avatarCX - avatarR, y: avatarCY - 17, width: avatarR * 2, alignment: .center)
+            }
+
+            // White circle border
+            context.saveGState()
+            UIColor.white.withAlphaComponent(0.4).setStroke()
+            let borderPath = UIBezierPath(ovalIn: avatarRect)
+            borderPath.lineWidth = 1.5
+            borderPath.stroke()
+            context.restoreGState()
+
+            // Right side text: SPLITIN → bill name → date
+            let textX    = avatarCX + avatarR + 16
+            let textW    = pageWidth - textX - margin
+            _ = drawText("SPLITIN", font: .systemFont(ofSize: 11, weight: .bold),
+                         color: UIColor.white.withAlphaComponent(0.7), x: textX, y: 24, width: textW)
+            _ = drawText(title.isEmpty ? "Bill Summary" : title,
+                         font: .systemFont(ofSize: 24, weight: .bold), color: .white,
+                         x: textX, y: 42, width: textW)
+            _ = drawText(dateStr, font: .systemFont(ofSize: 11, weight: .regular),
+                         color: UIColor.white.withAlphaComponent(0.85), x: textX, y: 96, width: textW)
+
+            y = 150
 
             // MARK: - Summary Cards
 
@@ -251,18 +285,53 @@ struct PDFExporter {
             }
 
             // MARK: Header
-            drawRect(CGRect(x: 0, y: 0, width: pageWidth, height: 130), fill: brandBlue)
-            drawText("Splitin", font: .systemFont(ofSize: 13, weight: .semibold),
-                     color: UIColor.white.withAlphaComponent(0.7), x: margin, y: 26, width: contentWidth)
-            drawText(bill.title.isEmpty ? "Bill Summary" : bill.title,
-                     font: .systemFont(ofSize: 26, weight: .bold),
-                     color: .white, x: margin, y: 48, width: contentWidth)
+            let headerH: CGFloat = 130
+            drawRect(CGRect(x: 0, y: 0, width: pageWidth, height: headerH), fill: brandBlue)
 
             let dateFmt = DateFormatter()
             dateFmt.dateStyle = .medium; dateFmt.timeStyle = .short
+
+            // Avatar (left side, vertically centered)
+            let avatarR: CGFloat = 38
+            let avatarCX: CGFloat = margin + avatarR
+            let avatarCY: CGFloat = headerH / 2
+            let avatarRect = CGRect(x: avatarCX - avatarR, y: avatarCY - avatarR,
+                                    width: avatarR * 2, height: avatarR * 2)
+
+            if let profileImg = ProfileImageStore.load() {
+                context.saveGState()
+                UIBezierPath(ovalIn: avatarRect).addClip()
+                profileImg.draw(in: avatarRect)
+                context.restoreGState()
+            } else {
+                context.saveGState()
+                UIColor.white.withAlphaComponent(0.25).setFill()
+                UIBezierPath(ovalIn: avatarRect).fill()
+                context.restoreGState()
+                let initial = String((UserDefaults.standard.string(forKey: "userName") ?? "S").prefix(1)).uppercased()
+                drawText(initial, font: .systemFont(ofSize: 28, weight: .bold), color: .white,
+                         x: avatarCX - avatarR, y: avatarCY - 17, width: avatarR * 2, align: .center)
+            }
+
+            // White circle border
+            context.saveGState()
+            UIColor.white.withAlphaComponent(0.4).setStroke()
+            let borderPath = UIBezierPath(ovalIn: avatarRect)
+            borderPath.lineWidth = 1.5
+            borderPath.stroke()
+            context.restoreGState()
+
+            // Right side: SPLITIN → bill name → date
+            let textX = avatarCX + avatarR + 16
+            let textW = pageWidth - textX - margin
+            drawText("SPLITIN", font: .systemFont(ofSize: 11, weight: .bold),
+                     color: UIColor.white.withAlphaComponent(0.7), x: textX, y: 24, width: textW)
+            drawText(bill.title.isEmpty ? "Bill Summary" : bill.title,
+                     font: .systemFont(ofSize: 24, weight: .bold),
+                     color: .white, x: textX, y: 42, width: textW)
             drawText(dateFmt.string(from: bill.date),
-                     font: .systemFont(ofSize: 12), color: UIColor.white.withAlphaComponent(0.85),
-                     x: margin, y: 98, width: contentWidth)
+                     font: .systemFont(ofSize: 11), color: UIColor.white.withAlphaComponent(0.85),
+                     x: textX, y: 96, width: textW)
             y = 150
 
             // MARK: Summary Cards

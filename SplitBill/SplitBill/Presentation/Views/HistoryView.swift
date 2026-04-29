@@ -32,28 +32,27 @@ struct HistoryView: View {
                 }
                 .padding()
             } else {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 12) {
-                        ForEach(viewModel.history) { bill in
-                            NavigationLink(destination: HistoryDetailView(bill: bill)) {
-                                HistoryCardView(bill: bill, showPaymentStatus: true)
-                            }
-                            .buttonStyle(.plain)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    withAnimation {
-                                        if let idx = viewModel.history.firstIndex(where: { $0.id == bill.id }) {
-                                            viewModel.deleteHistory(at: IndexSet(integer: idx))
-                                        }
-                                    }
-                                } label: {
-                                    Label("common.delete".localized, systemImage: "trash")
+                List {
+                    ForEach(viewModel.history) { bill in
+                        NavigationLink(destination: HistoryDetailView(bill: bill)) {
+                            HistoryCardView(bill: bill, showPaymentStatus: true)
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                if let idx = viewModel.history.firstIndex(where: { $0.id == bill.id }) {
+                                    viewModel.deleteHistory(at: IndexSet(integer: idx))
                                 }
+                            } label: {
+                                Label("common.delete".localized, systemImage: "trash")
                             }
                         }
                     }
-                    .padding()
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
         .navigationTitle("history.title".localized)

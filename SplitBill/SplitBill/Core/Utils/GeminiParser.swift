@@ -77,11 +77,17 @@ struct GeminiParser {
         Rules:
         - prices and amounts are plain integers (no Rp, no dots, no commas) — e.g. 35000 not "Rp 35.000"
         - if quantity shown (e.g. "2x Nasi Goreng 70.000"), split into individual price: 35000
+        - each item price is ONLY the price printed on that item's own line — never copy a tax or subtotal value into an item price
+        - ALL items must have DIFFERENT prices unless they are truly identical products — if every item has the same price you have made an error
         - discounts = negative amounts
-        - adjustments = tax, service charge, discount, tip, packaging fee — NOT the items themselves
+        - adjustments = tax, service charge, discount, tip, packaging fee, delivery fee — these go in adjustments ONLY, never in items
+        - tax rows (PPN, VAT, Pajak, Service Charge, etc.) must ALWAYS go in adjustments, never items
         - billName = the restaurant/store name at the top of the receipt
         - total = the final amount paid (Grand Total / Total Bayar / Total)
+        - skip: subtotal, sub-total — these are running totals, not items
         - skip: address, phone, cashier name, date/time, table number, thank-you messages
+        - skip: payment method info — debit card, credit card, bank name, card number, EDC, card type (Visa/Mastercard/GPN), approval code, reference number, merchant ID, terminal ID
+        - skip: "TUNAI", "DEBIT", "KREDIT", "CASH", "CHANGE", "KEMBALI", "KEMBALIAN" — these are payment rows, NOT items
         - if a field is unknown use null
         """
 
@@ -157,8 +163,26 @@ struct GeminiParser {
         if let rawItems = json["items"] as? [[String: Any]] {
             for item in rawItems {
                 guard let name = item["name"] as? String, !name.isEmpty else { continue }
+                guard !isPaymentRow(name) else {
+                    print("[GeminiParser] 🚫 Filtered payment row: \(name)")
+                    continue
+                }
+                guard !isAdjustmentRow(name) else {
+                    print("[GeminiParser] 🚫 Filtered adjustment row from items: \(name)")
+                    continue
+                }
                 let price = doubleFrom(item["price"])
                 if price > 0 { items.append((name: name, price: price)) }
+            }
+        }
+
+        // Safety net: if all items share the same price, Gemini confused a tax/total
+        // value with item prices — clear items so the user can enter them manually
+        if items.count > 1 {
+            let allSamePrice = items.allSatisfy { $0.price == items[0].price }
+            if allSamePrice {
+                print("[GeminiParser] ⚠️ All items have identical price (\(items[0].price)) — likely a parsing error, clearing items")
+                items = []
             }
         }
 
@@ -188,6 +212,58 @@ struct GeminiParser {
     }
 
     // MARK: - Helpers
+
+    // MARK: - Payment Row Filter
+
+    /// Returns true if the item name looks like a payment/card row, not a food/product item.
+    private static func isPaymentRow(_ name: String) -> Bool {
+        let lower = name.lowercased()
+
+        // Exact or strong matches — payment keywords
+        let paymentKeywords: [String] = [
+            "kartu debit", "kartu kredit", "debit card", "credit card",
+            "tunai", "cash", "kembali", "kembalian", "change", "kembalian",
+            "visa", "mastercard", "maestro", "gpn", "jcb", "amex", "american express",
+            "bca", "bni", "bri", "mandiri", "bsi", "cimb", "danamon", "permata", "ocbc",
+            "gopay", "ovo", "dana", "shopeepay", "linkaja", "qris",
+            "approval", "edc", "terminal id", "merchant id", "trace",
+            "reference", "no ref", "no. ref", "no.ref",
+            "pembayaran", "metode bayar", "payment method",
+            "debit", "kredit"
+        ]
+
+        for keyword in paymentKeywords {
+            // For short keywords like "debit"/"kredit", match whole word to avoid false positives
+            if keyword.count <= 6 {
+                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
+                if (try? NSRegularExpression(pattern: pattern))?.firstMatch(
+                    in: lower, range: NSRange(lower.startIndex..., in: lower)
+                ) != nil { return true }
+            } else {
+                if lower.contains(keyword) { return true }
+            }
+        }
+        return false
+    }
+
+    /// Returns true if the item name is a tax/fee/adjustment row, not an ordered product.
+    private static func isAdjustmentRow(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        let adjustmentKeywords: [String] = [
+            "ppn", "vat", "tax", "pajak",
+            "service charge", "service fee", "biaya layanan", "biaya servis",
+            "subtotal", "sub total", "sub-total",
+            "diskon", "discount",
+            "packaging", "kemasan", "biaya kemasan",
+            "ongkir", "delivery fee", "biaya pengiriman",
+            "tip", "gratuity",
+            "rounding", "pembulatan"
+        ]
+        for keyword in adjustmentKeywords {
+            if lower.contains(keyword) { return true }
+        }
+        return false
+    }
 
     private static func doubleFrom(_ value: Any?) -> Double {
         if let v = value as? Double  { return v }
