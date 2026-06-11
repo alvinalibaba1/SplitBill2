@@ -80,31 +80,30 @@ struct HomeView: View {
                 let result = try await GeminiParser.parse(image: normalized)
                 usedAI = result.usedAI
 
-                // If Gemini returned useful data, use it; otherwise fall through to OCR fallback
+                // If Gemini returned useful data, use it; otherwise fall through to local pipeline
                 if !result.items.isEmpty {
                     billName    = result.billName?.isEmpty == false ? result.billName! : "Scanned Bill"
                     total       = result.total ?? ""
                     items       = result.items
                     adjustments = result.adjustments
                 } else {
-                    // Gemini gave no items — run local OCR fallback
-                    let ocrLines = await runOCR(cgImage: cgImage)
+                    let local = await runLocalPipeline(cgImage: cgImage)
                     billName    = result.billName?.isEmpty == false
                         ? result.billName!
-                        : (SmartBillParser.extractBillName(from: ocrLines) ?? "Scanned Bill")
-                    total       = result.total ?? SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
-                    items       = SmartBillParser.extractItems(from: ocrLines)
-                    adjustments = SmartBillParser.extractAdjustments(from: ocrLines)
+                        : (local.billName ?? "Scanned Bill")
+                    total       = result.total ?? local.total ?? ""
+                    items       = local.items
+                    adjustments = local.adjustments
                 }
             } catch {
-                // Network / rate-limit error after retry → local OCR fallback
+                // Network / rate-limit error after retry → local pipeline
                 print("[GeminiParser] ❌ Error: \(error)")
-                let ocrLines = await runOCR(cgImage: cgImage)
+                let local = await runLocalPipeline(cgImage: cgImage)
                 usedAI      = false
-                billName    = SmartBillParser.extractBillName(from: ocrLines) ?? "Scanned Bill"
-                total       = SmartBillParser.extractBestTotal(from: ocrLines) ?? ""
-                items       = SmartBillParser.extractItems(from: ocrLines)
-                adjustments = SmartBillParser.extractAdjustments(from: ocrLines)
+                billName    = local.billName ?? "Scanned Bill"
+                total       = local.total ?? ""
+                items       = local.items
+                adjustments = local.adjustments
             }
 
             // ── Step 3: Navigate ──────────────────────────────────────────────
@@ -122,17 +121,66 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - OCR (fallback only)
+    // MARK: - Local pipeline (no AI, no network)
 
-    private func runOCR(cgImage: CGImage) async -> [String] {
+    /// Column-aware layout parser first; falls back to line-based heuristics
+    /// only when the layout parse can't reconcile against the receipt's total.
+    private func runLocalPipeline(cgImage: CGImage) async -> (
+        billName: String?, total: String?,
+        items: [(name: String, price: Double)],
+        adjustments: [(name: String, amount: Double)]
+    ) {
+        let words  = await runOCR(cgImage: cgImage)
+        let lines  = ReceiptLayoutParser.textLines(from: words)
+        let layout = ReceiptLayoutParser.parse(words: words)
+
+        if !layout.items.isEmpty && layout.confidence >= 0.45 {
+            return (layout.billName ?? SmartBillParser.extractBillName(from: lines),
+                    layout.total ?? SmartBillParser.extractBestTotal(from: lines),
+                    layout.items, layout.adjustments)
+        }
+
+        print("[LayoutParser] low confidence — trying line-based fallback")
+        let lineItems = SmartBillParser.extractItems(from: lines)
+        if layout.items.count > lineItems.count {
+            return (layout.billName ?? SmartBillParser.extractBillName(from: lines),
+                    layout.total ?? SmartBillParser.extractBestTotal(from: lines),
+                    layout.items, layout.adjustments)
+        }
+        return (SmartBillParser.extractBillName(from: lines),
+                SmartBillParser.extractBestTotal(from: lines),
+                lineItems,
+                SmartBillParser.extractAdjustments(from: lines))
+    }
+
+    // MARK: - OCR (word-level, with bounding boxes)
+
+    private func runOCR(cgImage: CGImage) async -> [ReceiptLayoutParser.Word] {
         await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
-                var observed: [(text: String, x: CGFloat, y: CGFloat)] = []
+                var words: [ReceiptLayoutParser.Word] = []
                 let req = VNRecognizeTextRequest { r, _ in
                     guard let res = r.results as? [VNRecognizedTextObservation] else { return }
                     for obs in res {
-                        if let top = obs.topCandidates(1).first {
-                            observed.append((top.string, obs.boundingBox.midX, obs.boundingBox.midY))
+                        guard let top = obs.topCandidates(1).first else { continue }
+                        let s = top.string
+                        // Split each observation into words, keeping each word's
+                        // own bounding box so the parser can detect columns.
+                        var start = s.startIndex
+                        while start < s.endIndex {
+                            while start < s.endIndex, s[start].isWhitespace {
+                                start = s.index(after: start)
+                            }
+                            guard start < s.endIndex else { break }
+                            var end = start
+                            while end < s.endIndex, !s[end].isWhitespace {
+                                end = s.index(after: end)
+                            }
+                            let range = start..<end
+                            let box = ((try? top.boundingBox(for: range)) ?? nil)?.boundingBox
+                                ?? obs.boundingBox
+                            words.append(.init(text: String(s[range]), box: box))
+                            start = end
                         }
                     }
                 }
@@ -141,19 +189,7 @@ struct HomeView: View {
                 req.recognitionLanguages   = ["id-ID", "en-US"]
                 req.minimumTextHeight      = 0.015
                 try? VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([req])
-
-                let yThreshold: CGFloat = 0.025
-                var groups: [[(text: String, x: CGFloat, y: CGFloat)]] = []
-                for obs in observed.sorted(by: { $0.y > $1.y }) {
-                    if let idx = groups.indices.first(where: {
-                        !groups[$0].isEmpty && abs(groups[$0][0].y - obs.y) < yThreshold
-                    }) { groups[idx].append(obs) } else { groups.append([obs]) }
-                }
-                let lines = groups
-                    .sorted { ($0.first?.y ?? 0) > ($1.first?.y ?? 0) }
-                    .map { g in g.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
-                    .filter { !$0.isEmpty }
-                cont.resume(returning: lines)
+                cont.resume(returning: words)
             }
         }
     }

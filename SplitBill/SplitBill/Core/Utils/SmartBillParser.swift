@@ -591,6 +591,22 @@ struct SmartBillParser {
         for pattern in patterns {
             result = result.replacingOccurrences(of: pattern, with: "", options: [.regularExpression, .caseInsensitive])
         }
+
+        // Strip a leading bare quantity column ("1 Nasi Tunjang" → "Nasi Tunjang")
+        // common on tabular receipts. Guard: 1–2 digit qty, must be followed by a
+        // letter, and the remainder must still contain real words — so drink names
+        // like "100 Plus" or "7 Up" are left untouched.
+        if let stripped = try? NSRegularExpression(pattern: "^\\d{1,2}\\s+(?=\\p{L})")
+            .stringByReplacingMatches(
+                in: result,
+                range: NSRange(result.startIndex..., in: result),
+                withTemplate: ""
+            ),
+           stripped != result,
+           stripped.filter({ $0.isLetter }).count >= 3 {
+            result = stripped
+        }
+
         return result.trimmingCharacters(in: .whitespaces)
     }
 

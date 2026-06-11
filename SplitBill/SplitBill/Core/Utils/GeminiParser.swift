@@ -35,8 +35,9 @@ struct GeminiParser {
     /// Sends the receipt image to Gemini and returns structured data.
     /// Retries once after 2 s on any error before throwing.
     static func parse(image: UIImage) async throws -> ParsedResult {
-        // Normalize EXIF orientation, then resize to 768px longest side
-        let resized = image.normalizedOrientation().resizedForGemini(maxSide: 768)
+        // Normalize EXIF orientation, then resize to 1024px longest side
+        // (higher res helps small/dense receipt fonts; still well within request limits)
+        let resized = image.normalizedOrientation().resizedForGemini(maxSide: 1024)
 
         guard let jpegData = resized.jpegData(compressionQuality: 0.75) else {
             throw GeminiError.imageEncodingFailed
@@ -56,39 +57,65 @@ struct GeminiParser {
 
     private static func sendRequest(base64: String) async throws -> ParsedResult {
         let prompt = """
-        You are an expert receipt parser for Indonesian and English receipts.
-        Analyze this receipt image carefully and extract ALL ordered items.
+        You are an expert receipt parser. You handle ALL receipt types:
+        restaurants, cafés, warung, grocery/minimarket, retail, and delivery-app
+        receipts (GoFood, GrabFood, ShopeeFood), in Indonesian or English.
 
-        Return ONLY valid JSON — no markdown, no explanation, exactly this structure:
+        Read the image carefully and extract EVERY ordered line item with its quantity.
+
+        Return ONLY valid JSON — no markdown, no commentary — exactly this shape:
         {
           "billName": "Restaurant or Store Name",
           "items": [
-            {"name": "Item Name", "price": 35000},
-            {"name": "Another Item", "price": 15000}
+            {"name": "Nasi Goreng", "qty": 2, "price": 35000},
+            {"name": "Es Teh",      "qty": 1, "price": 8000}
           ],
           "adjustments": [
-            {"name": "PPN 11%", "amount": 5500},
-            {"name": "Service Charge", "amount": 3000},
-            {"name": "Discount", "amount": -10000}
+            {"name": "PPN 11%",         "amount": 5500},
+            {"name": "Service Charge",  "amount": 3000},
+            {"name": "Discount",        "amount": -10000}
           ],
           "total": "49500"
         }
 
-        Rules:
-        - prices and amounts are plain integers (no Rp, no dots, no commas) — e.g. 35000 not "Rp 35.000"
-        - if quantity shown (e.g. "2x Nasi Goreng 70.000"), split into individual price: 35000
-        - each item price is ONLY the price printed on that item's own line — never copy a tax or subtotal value into an item price
-        - ALL items must have DIFFERENT prices unless they are truly identical products — if every item has the same price you have made an error
-        - discounts = negative amounts
-        - adjustments = tax, service charge, discount, tip, packaging fee, delivery fee — these go in adjustments ONLY, never in items
-        - tax rows (PPN, VAT, Pajak, Service Charge, etc.) must ALWAYS go in adjustments, never items
-        - billName = the restaurant/store name at the top of the receipt
-        - total = the final amount paid (Grand Total / Total Bayar / Total)
-        - skip: subtotal, sub-total — these are running totals, not items
-        - skip: address, phone, cashier name, date/time, table number, thank-you messages
-        - skip: payment method info — debit card, credit card, bank name, card number, EDC, card type (Visa/Mastercard/GPN), approval code, reference number, merchant ID, terminal ID
-        - skip: "TUNAI", "DEBIT", "KREDIT", "CASH", "CHANGE", "KEMBALI", "KEMBALIAN" — these are payment rows, NOT items
-        - if a field is unknown use null
+        NUMBERS
+        - every price/amount is a plain integer in rupiah — no "Rp", no thousand dots, no commas.
+          "Rp 35.000" → 35000 · "12.500" → 12500 · "1.250.000" → 1250000
+        - "price" is the UNIT price for ONE of that item, NOT the line total.
+          "2x Nasi Goreng  70.000" → {"name":"Nasi Goreng","qty":2,"price":35000}
+          "3 Kopi @25.000  75.000" → {"name":"Kopi","qty":3,"price":25000}
+        - if only a line total is printed and qty > 1, divide the line total by qty to get the unit price.
+
+        ITEMS — what counts as an item
+        - a real product/dish the customer ordered. Repeated prices are FINE and EXPECTED
+          (e.g. three coffees all 25000) — never drop or merge items just because prices match.
+        - item names can wrap onto two lines — join them into one name.
+        - modifiers / add-ons printed under an item ("+ Extra Cheese 5.000", "- No Onion",
+          "Topping: Boba 7.000", "Less Ice") belong to that parent item: add a priced add-on
+          to the parent's unit price, and ignore zero-price notes like "Less Ice"/"No Onion".
+        - grocery/weighted lines ("Apel 0,5 kg x 30.000 = 15.000") → name "Apel", qty 1, price 15000.
+        - keep the language exactly as printed; do not translate item names.
+
+        ADJUSTMENTS — never put these in items
+        - tax (PPN, VAT, Pajak, PB1), service charge / biaya layanan, packaging / biaya kemasan,
+          delivery / ongkir / biaya pengiriman, tip / gratuity, rounding / pembulatan.
+        - discounts, promo, voucher, "Diskon", "Potongan" → NEGATIVE amount.
+        - delivery-app fees (ongkir, biaya layanan, biaya penanganan) → adjustments.
+
+        SKIP entirely (never an item, never an adjustment)
+        - subtotal / sub-total — it is a running sum, not a charge.
+        - store address, phone, cashier, date/time, table no., queue no., thank-you text.
+        - payment rows: TUNAI, CASH, DEBIT, KREDIT, KEMBALI(AN), CHANGE, QRIS, GoPay, OVO, Dana,
+          ShopeePay, card brand (Visa/Mastercard/GPN), approval/ref/merchant/terminal IDs.
+
+        OTHER FIELDS
+        - billName = the merchant name at the very top (use the brand line, not a tagline).
+        - total = the final amount paid (Grand Total / Total Bayar / Total Pembayaran).
+        - any field you cannot read → null.
+
+        SELF-CHECK before answering
+        - confirm (sum of item unit_price × qty) + (sum of adjustments) ≈ total.
+          If it is far off, re-read the image — you likely mis-typed a price or missed an item.
         """
 
         let body: [String: Any] = [
@@ -106,7 +133,7 @@ struct GeminiParser {
             "generationConfig": [
                 "responseMimeType": "application/json",
                 "temperature": 0.0,
-                "maxOutputTokens": 2048
+                "maxOutputTokens": 4096
             ]
         ]
 
@@ -171,18 +198,16 @@ struct GeminiParser {
                     print("[GeminiParser] 🚫 Filtered adjustment row from items: \(name)")
                     continue
                 }
-                let price = doubleFrom(item["price"])
-                if price > 0 { items.append((name: name, price: price)) }
-            }
-        }
 
-        // Safety net: if all items share the same price, Gemini confused a tax/total
-        // value with item prices — clear items so the user can enter them manually
-        if items.count > 1 {
-            let allSamePrice = items.allSatisfy { $0.price == items[0].price }
-            if allSamePrice {
-                print("[GeminiParser] ⚠️ All items have identical price (\(items[0].price)) — likely a parsing error, clearing items")
-                items = []
+                // Unit price for ONE of this item
+                let unitPrice = doubleFrom(item["price"])
+                guard unitPrice > 0 else { continue }
+
+                // Expand quantity into individual assignable rows (caps at 50 for safety)
+                let qty = max(1, min(50, Int(doubleFrom(item["qty"]))))
+                for _ in 0..<qty {
+                    items.append((name: name, price: unitPrice))
+                }
             }
         }
 
@@ -201,6 +226,23 @@ struct GeminiParser {
             if let t = json["total"] as? Int    { return String(t) }
             return nil
         }()
+
+        // Reconciliation sanity-check (non-destructive — just logs confidence)
+        let itemsSum = items.reduce(0) { $0 + $1.price }
+        let adjSum   = adjustments.reduce(0) { $0 + $1.amount }
+        if let totalStr = total, let totalVal = Double(totalStr.filter { $0.isNumber || $0 == "." }) {
+            let expected = itemsSum + adjSum
+            let diff = abs(expected - totalVal)
+            // Allow small rounding gap, or a ~12% gap (untyped tax/service the model put under total)
+            let tolerance = max(1000, totalVal * 0.12)
+            if diff <= tolerance {
+                print("[GeminiParser] ✅ Reconciled: items \(Int(itemsSum)) + adj \(Int(adjSum)) ≈ total \(Int(totalVal))")
+            } else {
+                print("[GeminiParser] ⚠️ Reconcile gap \(Int(diff)) — items \(Int(itemsSum)) + adj \(Int(adjSum)) vs total \(Int(totalVal)). User should verify.")
+            }
+        }
+
+        print("[GeminiParser] 📋 Parsed \(items.count) item rows, \(adjustments.count) adjustments")
 
         return ParsedResult(
             billName:    billName,
