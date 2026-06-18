@@ -21,9 +21,13 @@ struct ReceiptLayoutParser {
     // MARK: - Types
 
     /// One OCR'd word with its Vision-normalized bounding box (origin bottom-left).
+    /// `obs` is the index of the Vision observation it came from — words sharing
+    /// an `obs` are guaranteed to sit on the same printed line, which lets us
+    /// estimate page tilt without trusting distorted per-word bounding boxes.
     struct Word {
         let text: String
         let box: CGRect
+        var obs: Int = -1
     }
 
     struct Receipt {
@@ -36,8 +40,8 @@ struct ReceiptLayoutParser {
 
     private struct Row {
         var words: [Word]                                     // sorted left → right after grouping
-        var sumY: CGFloat
-        var meanY: CGFloat { sumY / CGFloat(words.count) }
+        var sumKey: CGFloat                                   // Σ baseline-projected Y (skew-corrected)
+        var meanKey: CGFloat { sumKey / CGFloat(words.count) }
     }
 
     private struct ItemRow {
@@ -89,7 +93,8 @@ struct ReceiptLayoutParser {
     /// Flattens word observations into top-to-bottom text lines
     /// (for SmartBillParser fallback and bill-name extraction).
     static func textLines(from words: [Word]) -> [String] {
-        groupIntoRows(words)
+        let slope = estimateSkew(words)
+        return groupIntoRows(words, slope: slope)
             .map { $0.words.map(\.text).joined(separator: " ") }
             .filter { !$0.isEmpty }
     }
@@ -98,10 +103,14 @@ struct ReceiptLayoutParser {
         var receipt = Receipt()
         guard words.count >= 4 else { return receipt }
 
-        let rows = groupIntoRows(words)
+        // Estimate page tilt from the price column, then read rows along the
+        // tilted baseline. Without this, a few degrees of skew pairs each item
+        // name with a neighbouring row's price.
+        let slope = estimateSkew(words)
+        let rows = groupIntoRows(words, slope: slope)
         receipt.billName = extractBillName(rows: rows)
 
-        guard let column = detectPriceColumn(rows: rows) else {
+        guard let column = detectPriceColumn(rows: rows, slope: slope) else {
             print("[LayoutParser] ⚠️ No price column detected")
             return receipt
         }
@@ -115,7 +124,7 @@ struct ReceiptLayoutParser {
         var pendingName: String?   // unpriced name line directly above a priced row
 
         for row in rows {
-            guard let priced = extractPricedRow(row, column: column) else {
+            guard let priced = extractPricedRow(row, column: column, slope: slope) else {
                 // No price on this row — may be a wrapped item name for the next row
                 let text = cleanedName(row.words.map(\.text).joined(separator: " "))
                 pendingName = (isPlausibleName(text) && !matchesAny(text.lowercased(), allStopKeywords))
@@ -202,35 +211,93 @@ struct ReceiptLayoutParser {
 
     // MARK: - Row grouping (adaptive Y threshold)
 
-    private static func groupIntoRows(_ words: [Word]) -> [Row] {
+    private static func groupIntoRows(_ words: [Word], slope m: CGFloat) -> [Row] {
         guard !words.isEmpty else { return [] }
         let heights = words.map { $0.box.height }.sorted()
         let medianH = heights[heights.count / 2]
         let yTol = max(0.008, medianH * 0.55)
 
+        // Baseline-projected Y: constant for all words on the same printed row,
+        // regardless of their X, even when the receipt is tilted by angle θ
+        // (m = tanθ). Derivation: rotating a horizontal row, (y − m·x) collapses
+        // back to a per-row constant.
+        func rowKey(_ w: Word) -> CGFloat { w.box.midY - m * w.box.midX }
+
         var rows: [Row] = []
-        for w in words.sorted(by: { $0.box.midY > $1.box.midY }) {
-            if let i = rows.indices.first(where: { abs(rows[$0].meanY - w.box.midY) < yTol }) {
+        for w in words.sorted(by: { rowKey($0) > rowKey($1) }) {
+            let k = rowKey(w)
+            if let i = rows.indices.first(where: { abs(rows[$0].meanKey - k) < yTol }) {
                 rows[i].words.append(w)
-                rows[i].sumY += w.box.midY
+                rows[i].sumKey += k
             } else {
-                rows.append(Row(words: [w], sumY: w.box.midY))
+                rows.append(Row(words: [w], sumKey: k))
             }
         }
         for i in rows.indices {
             rows[i].words.sort { $0.box.minX < $1.box.minX }
         }
-        return rows.sorted { $0.meanY > $1.meanY }
+        return rows.sorted { $0.meanKey > $1.meanKey }
+    }
+
+    // MARK: - Skew estimation
+
+    /// Estimates page tilt (tanθ, where rowKey = midY − tanθ·midX) by searching for
+    /// the angle that best collapses words into flat rows. For each candidate slope
+    /// it counts horizontally-separated word pairs whose baseline-projected Y lines
+    /// up; the true tilt is where the most pairs agree at once. This needs no help
+    /// from how Vision chunks text and is immune to rotated-glyph bbox distortion.
+    /// Returns 0 when level or under-determined; clamped to ±~20°.
+    private static func estimateSkew(_ words: [Word]) -> CGFloat {
+        guard words.count >= 8 else { return 0 }
+        let heights = words.map { $0.box.height }.sorted()
+        let medianH = heights[heights.count / 2]
+        let eps = max(0.006, medianH * 0.5)
+
+        // Candidate same-row pairs: far enough apart in X to discriminate angle,
+        // close enough in Y that they could plausibly share a row.
+        var pairs: [(dx: CGFloat, dy: CGFloat)] = []
+        let pts = words.map { ($0.box.midX, $0.box.midY) }
+        for i in 0..<pts.count {
+            for j in (i + 1)..<pts.count {
+                let dx = pts[i].0 - pts[j].0
+                let dy = pts[i].1 - pts[j].1
+                if abs(dx) >= 0.05 && abs(dy) < 0.22 { pairs.append((dx, dy)) }
+            }
+        }
+        guard pairs.count >= 5 else { return 0 }
+
+        var bestM: CGFloat = 0
+        var bestScore = -1
+        var m: CGFloat = -0.30
+        while m <= 0.30 {
+            var score = 0
+            for p in pairs where abs(p.dy - m * p.dx) < eps { score += 1 }
+            if score > bestScore || (score == bestScore && abs(m) < abs(bestM)) {
+                bestScore = score
+                bestM = m
+            }
+            m += 0.004
+        }
+
+        if abs(bestM) < 0.012 { return 0 }              // ignore negligible tilt (<~0.7°)
+        let clamped = max(-0.36, min(0.36, bestM))
+        print(String(format: "[LayoutParser] skew tanθ = %.3f (%.1f°), %d/%d pairs aligned",
+                     clamped, atan(clamped) * 180 / .pi, bestScore, pairs.count))
+        return clamped
     }
 
     // MARK: - Price column detection
 
-    private static func detectPriceColumn(rows: [Row]) -> PriceColumn? {
+    private static func detectPriceColumn(rows: [Row], slope m: CGFloat) -> PriceColumn? {
+        // Skew-corrected right edge: (maxX + m·midY) is constant down a tilted
+        // price column, mirroring the row-key projection.
+        func colKey(_ w: Word) -> CGFloat { w.box.maxX + m * w.box.midY }
+
         // Right edge of the rightmost meaningful number on each row
         var edges: [CGFloat] = []
         for row in rows {
             if let w = row.words.last(where: { (numericValue(of: $0.text).map { abs($0) >= 100 }) ?? false }) {
-                edges.append(w.box.maxX)
+                edges.append(colKey(w))
             }
         }
         guard edges.count >= 3 else { return nil }
@@ -268,13 +335,15 @@ struct ReceiptLayoutParser {
     // MARK: - Row → (qty, name, price)
 
     private static func extractPricedRow(
-        _ row: Row, column: PriceColumn
+        _ row: Row, column: PriceColumn, slope m: CGFloat
     ) -> (name: String, qty: Int, unitHint: Double?, value: Double)? {
+
+        func colKey(_ w: Word) -> CGFloat { w.box.maxX + m * w.box.midY }
 
         // Price = rightmost numeric word whose right edge sits in the price column
         guard let priceIdx = row.words.indices.reversed().first(where: { i in
             let w = row.words[i]
-            return abs(w.box.maxX - column.centerX) <= column.tolerance
+            return abs(colKey(w) - column.centerX) <= column.tolerance
                 && numericValue(of: w.text) != nil
         }) else { return nil }
         guard let value = numericValue(of: row.words[priceIdx].text) else { return nil }
