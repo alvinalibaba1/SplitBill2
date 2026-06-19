@@ -58,7 +58,10 @@ struct ReceiptLayoutParser {
 
     // MARK: - Keywords
 
-    private static let subtotalKeywords = ["subtotal", "sub total", "sub-total", "sub tot"]
+    private static let subtotalKeywords = [
+        "subtotal", "sub total", "sub-total", "sub tot",
+        "harga jual", "total harga", "total belanja"   // minimarket sale subtotal
+    ]
     private static let totalKeywords    = [
         "grand total", "total bayar", "total pembayaran", "total tagihan",
         "amount due", "total due", "jumlah", "total"
@@ -81,7 +84,8 @@ struct ReceiptLayoutParser {
         "npwp", "kasir", "cashier", "meja", "table", "tanggal", "wifi",
         "terima kasih", "thank you", "print", "struk", "nota", "invoice",
         "receipt", "telp", "phone", "alamat", "jalan", "antrian", "queue",
-        "pax", "guest", "anda hemat", "item", "qty"
+        "pax", "guest", "anda hemat", "hemat", "item", "qty", "dpp",
+        "ppn dpp", "no.", "no trans", "shift", "operator", "kasse", "exp"
     ]
     private static var allStopKeywords: [String] {
         subtotalKeywords + totalKeywords + paymentKeywords +
@@ -150,6 +154,11 @@ struct ReceiptLayoutParser {
                 adjustments.append((name: cleanedName(name), amount: -abs(priced.value)))
             } else if matchesAny(lower, chargeKeywords) {
                 adjustments.append((name: cleanedName(name), amount: priced.value))
+            } else if name.contains("%") {
+                // "Serv 5%", "PB 1 10%", "PPN 11%" — a percentage line is always a
+                // fee or discount, even when OCR mangles the label ("Serv"→"Sery").
+                let amt = matchesAny(lower, discountKeywords) ? -abs(priced.value) : priced.value
+                adjustments.append((name: cleanedName(name), amount: amt))
             } else if sawTotal {
                 continue           // below the total line lives payment junk
             } else if isPlausibleName(name), priced.value >= 100 {
@@ -215,7 +224,9 @@ struct ReceiptLayoutParser {
         guard !words.isEmpty else { return [] }
         let heights = words.map { $0.box.height }.sorted()
         let medianH = heights[heights.count / 2]
-        let yTol = max(0.008, medianH * 0.55)
+        // 0.45 of median text height: tight enough that adjacent rows on densely
+        // printed receipts don't merge, loose enough to keep a row's words together.
+        let yTol = max(0.008, medianH * 0.45)
 
         // Baseline-projected Y: constant for all words on the same printed row,
         // regardless of their X, even when the receipt is tilted by angle θ
@@ -340,15 +351,18 @@ struct ReceiptLayoutParser {
 
         func colKey(_ w: Word) -> CGFloat { w.box.maxX + m * w.box.midY }
 
+        // Repair thousands split by OCR ("37.500" → "37" "500", "18," "000").
+        let cells = mergeNumberFragments(row.words)
+
         // Price = rightmost numeric word whose right edge sits in the price column
-        guard let priceIdx = row.words.indices.reversed().first(where: { i in
-            let w = row.words[i]
+        guard let priceIdx = cells.indices.reversed().first(where: { i in
+            let w = cells[i]
             return abs(colKey(w) - column.centerX) <= column.tolerance
                 && numericValue(of: w.text) != nil
         }) else { return nil }
-        guard let value = numericValue(of: row.words[priceIdx].text) else { return nil }
+        guard let value = numericValue(of: cells[priceIdx].text) else { return nil }
 
-        var nameWords = Array(row.words[..<priceIdx])
+        var nameWords = Array(cells[..<priceIdx])
 
         // Leading qty column: "2 Nasi …", "2x Nasi …"
         var qty = 1
@@ -385,6 +399,36 @@ struct ReceiptLayoutParser {
 
         let name = nameWords.map(\.text).joined(separator: " ")
         return (name: name, qty: qty, unitHint: unitHint, value: value)
+    }
+
+    /// Rejoins a thousands group that OCR split into two tokens, e.g.
+    /// "37" "500" → "37500", "18," "000" → "18000". Conservative: only when the
+    /// right token is exactly 3 digits, the two are horizontally adjacent, and the
+    /// left is either short (≤2 digits) or ends in a separator — so a volume+price
+    /// pair like "600" "250" is left alone.
+    private static func mergeNumberFragments(_ words: [Word]) -> [Word] {
+        guard words.count >= 2 else { return words }
+        var out: [Word] = []
+        var i = 0
+        while i < words.count {
+            let cur = words[i]
+            if i + 1 < words.count {
+                let nxt = words[i + 1]
+                let leftShort = cur.text.range(of: "^\\d{1,2}$", options: .regularExpression) != nil
+                let leftSep   = cur.text.range(of: "^\\d{1,3}[.,]$", options: .regularExpression) != nil
+                let rightOK   = nxt.text.range(of: "^\\d{3}$", options: .regularExpression) != nil
+                let gap       = nxt.box.minX - cur.box.maxX
+                if rightOK && (leftShort || leftSep) && gap < 0.04 {
+                    let merged = cur.text.filter(\.isNumber) + nxt.text
+                    out.append(Word(text: merged, box: cur.box.union(nxt.box), obs: cur.obs))
+                    i += 2
+                    continue
+                }
+            }
+            out.append(cur)
+            i += 1
+        }
+        return out
     }
 
     // MARK: - Bill name (largest plausible text near the top)
