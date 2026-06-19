@@ -136,8 +136,16 @@ struct ReceiptLayoutParser {
                 continue
             }
 
+            // Two-line items print the product name on its own line and a
+            // "1 lusin x 36,000   Rp 36.000" detail line below. Pull the name from
+            // the line above when this row is just a quantity/unit-price detail or
+            // has no real name of its own.
             var name = priced.name
-            if name.filter(\.isLetter).count < 3, let donor = pendingName { name = donor }
+            let rowText = row.words.map(\.text).joined(separator: " ")
+            if let donor = pendingName,
+               name.filter(\.isLetter).count < 3 || isQuantityDetail(rowText) {
+                name = donor
+            }
             pendingName = nil
             let lower = name.lowercased()
 
@@ -472,9 +480,20 @@ struct ReceiptLayoutParser {
         return letters >= 2 && letters >= digits
     }
 
+    /// True when a row is a quantity/unit-price detail line, e.g.
+    /// "1 lusin x 36,000", "1 500 ml x 7,000", "1 x 27,000" — a leading number
+    /// followed later by a "x / × / @" multiplier and another number. Such a row's
+    /// real product name lives on the line above it.
+    private static func isQuantityDetail(_ s: String) -> Bool {
+        s.range(of: "[0-9].*[xX×@]\\s*[0-9]", options: .regularExpression) != nil
+    }
+
     private static func cleanedName(_ text: String) -> String {
-        text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        var s = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: " \t:;,.-*"))
+        // Drop a leading list marker like "1." / "2)" so "1. Indomie Goreng" → "Indomie Goreng".
+        s = s.replacingOccurrences(of: "^\\d{1,3}[.)]\\s+", with: "", options: .regularExpression)
+        return s.trimmingCharacters(in: CharacterSet(charactersIn: " \t:;,.-*"))
     }
 
     /// Parses "36.000", "Rp 12.500", "1.250.000", "(10.000)", "-5.000", "36,5" → Double.
