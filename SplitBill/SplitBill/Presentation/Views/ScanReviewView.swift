@@ -35,7 +35,7 @@ struct ScanReviewView: View {
                             .foregroundColor(scannedData.parsedByAI ? Color.appPrimary : Color.appSecondary)
                             .font(AppTheme.Fonts.inter(15))
                         Text(scannedData.parsedByAI
-                             ? "Parsed by Gemini AI — tap to edit, swipe to delete."
+                             ? "Parsed by AI — tap to edit, swipe to delete."
                              : "Scanned locally — tap to edit, swipe to delete.")
                             .font(AppTheme.Fonts.inter(13, weight: .medium))
                             .foregroundColor(scannedData.parsedByAI ? Color.appPrimary : Color.appSecondary)

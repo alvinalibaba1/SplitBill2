@@ -55,8 +55,9 @@ struct GeminiParser {
 
     // MARK: - Request
 
-    private static func sendRequest(base64: String) async throws -> ParsedResult {
-        let prompt = """
+    // Shared with OpenAIParser — both models get the identical instructions
+    // and return the identical JSON contract.
+    static let receiptPrompt = """
         You are an expert receipt parser. You handle ALL receipt types:
         restaurants, cafés, warung, grocery/minimarket, retail, and delivery-app
         receipts (GoFood, GrabFood, ShopeeFood), in Indonesian or English.
@@ -118,6 +119,7 @@ struct GeminiParser {
           If it is far off, re-read the image — you likely mis-typed a price or missed an item.
         """
 
+    private static func sendRequest(base64: String) async throws -> ParsedResult {
         let body: [String: Any] = [
             "contents": [[
                 "parts": [
@@ -127,7 +129,7 @@ struct GeminiParser {
                             "data": base64
                         ]
                     ],
-                    ["text": prompt]
+                    ["text": receiptPrompt]
                 ]
             ]],
             "generationConfig": [
@@ -171,6 +173,13 @@ struct GeminiParser {
             throw GeminiError.noContent
         }
 
+        return try parseReceiptPayload(text)
+    }
+
+    /// Turns the model's JSON payload (the receiptPrompt contract) into a
+    /// ParsedResult. Shared with OpenAIParser — envelope differs per provider,
+    /// the payload doesn't.
+    static func parseReceiptPayload(_ text: String) throws -> ParsedResult {
         let clean = text
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "```json", with: "")

@@ -69,39 +69,40 @@ struct HomeView: View {
         LoadingState.shared.isProcessingScan = true
 
         Task {
-            // ── Step 1: Gemini reads the IMAGE directly (multimodal) ──────────
+            // ── Step 1: AI reads the IMAGE — Gemini (free) first, GPT-4o mini
+            //    backup, on-device column parser as the last resort ────────────
             let billName: String
             let total: String
             let items: [(name: String, price: Double)]
             let adjustments: [(name: String, amount: Double)]
             let usedAI: Bool
 
+            var aiResult: GeminiParser.ParsedResult?
             do {
-                let result = try await GeminiParser.parse(image: normalized)
-                usedAI = result.usedAI
-
-                // If Gemini returned useful data, use it; otherwise fall through to local pipeline
-                if !result.items.isEmpty {
-                    billName    = result.billName?.isEmpty == false ? result.billName! : "Scanned Bill"
-                    total       = result.total ?? ""
-                    items       = result.items
-                    adjustments = result.adjustments
-                } else {
-                    let local = await runLocalPipeline(cgImage: cgImage)
-                    billName    = result.billName?.isEmpty == false
-                        ? result.billName!
-                        : (local.billName ?? "Scanned Bill")
-                    total       = result.total ?? local.total ?? ""
-                    items       = local.items
-                    adjustments = local.adjustments
-                }
+                aiResult = try await GeminiParser.parse(image: normalized)
             } catch {
-                // Network / rate-limit error after retry → local pipeline
-                print("[GeminiParser] ❌ Error: \(error)")
+                print("[GeminiParser] ❌ Error: \(error) — trying GPT-4o mini")
+                do {
+                    aiResult = try await OpenAIParser.parse(image: normalized)
+                } catch {
+                    print("[OpenAIParser] ❌ Error: \(error) — falling back to local parser")
+                }
+            }
+
+            if let result = aiResult, !result.items.isEmpty {
+                usedAI      = true
+                billName    = result.billName?.isEmpty == false ? result.billName! : "Scanned Bill"
+                total       = result.total ?? ""
+                items       = result.items
+                adjustments = result.adjustments
+            } else {
+                // No AI available, or AI found no items → local pipeline
                 let local = await runLocalPipeline(cgImage: cgImage)
                 usedAI      = false
-                billName    = local.billName ?? "Scanned Bill"
-                total       = local.total ?? ""
+                billName    = aiResult?.billName?.isEmpty == false
+                    ? aiResult!.billName!
+                    : (local.billName ?? "Scanned Bill")
+                total       = aiResult?.total ?? local.total ?? ""
                 items       = local.items
                 adjustments = local.adjustments
             }
