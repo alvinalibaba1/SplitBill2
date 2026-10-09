@@ -118,6 +118,24 @@ extension Color {
     })
 }
 
+// MARK: - Per-person avatar color
+
+extension Color {
+    /// Stable color for a person (same name → same color), dark enough for white initials.
+    static func avatar(for name: String) -> Color {
+        let colors: [Color] = [
+            Color(hex: "22416F"),   // navy
+            Color(hex: "A16207"),   // gold
+            Color(hex: "E5586E"),   // rose
+            Color(hex: "2563EB"),   // blue
+            Color(hex: "0E7490"),   // cyan
+            Color(hex: "7C3AED"),   // violet
+        ]
+        let seed = name.lowercased().unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
+        return colors[seed % colors.count]
+    }
+}
+
 // MARK: - AppTheme
 
 struct AppTheme {

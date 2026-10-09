@@ -142,7 +142,7 @@ struct HistoryCardView: View {
             ForEach(Array(visiblePeople.enumerated()), id: \.element.id) { index, person in
                 avatarCircle(
                     initial: String(person.name.prefix(1)).uppercased(),
-                    color: avatarColor(for: person.name)
+                    color: Color.avatar(for: person.name)
                 )
                 .offset(x: CGFloat(index) * -8)
                 .zIndex(Double(visiblePeople.count - index))
@@ -182,20 +182,6 @@ struct HistoryCardView: View {
                 .font(AppTheme.Fonts.inter(11, weight: .bold))
                 .foregroundColor(.white)
         }
-    }
-
-    /// Stable per-person color (same name → same color), all dark enough for white initials.
-    private func avatarColor(for name: String) -> Color {
-        let colors: [Color] = [
-            Color(hex: "22416F"),   // emerald
-            Color(hex: "A16207"),   // gold
-            Color(hex: "E5586E"),   // rose
-            Color(hex: "D97706"),   // amber
-            Color(hex: "2563EB"),   // blue
-            Color(hex: "0E7490"),   // cyan
-        ]
-        let seed = name.lowercased().unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
-        return colors[seed % colors.count]
     }
 }
 

@@ -47,6 +47,14 @@
 "stats.empty.sub"           = "Selesaikan pembagian tagihan pertamamu untuk melihat insights.";
 "stats.bill"                = "tagihan";
 "stats.bills"               = "tagihan";
+"stats.vs.last.month"       = "dari bulan lalu";
+"stats.bills.this.month"    = "tagihan bulan ini";
+"stats.collection"          = "Penagihan";
+"stats.collected.pct"       = "%d%% terkumpul";
+"stats.paid"                = "Lunas";
+"stats.outstanding"         = "Belum dibayar";
+"stats.average"             = "Rata-rata";
+"stats.last.six"            = "6 bulan terakhir";
 
 /* ── Detail ────────────────────────────────────── */
 "detail.still.owes"         = "MASIH BERHUTANG";

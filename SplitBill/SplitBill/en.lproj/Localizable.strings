@@ -47,6 +47,14 @@
 "stats.empty.sub"           = "Complete your first bill split to see insights here.";
 "stats.bill"                = "bill";
 "stats.bills"               = "bills";
+"stats.vs.last.month"       = "vs last month";
+"stats.bills.this.month"    = "bills this month";
+"stats.collection"          = "Collection";
+"stats.collected.pct"       = "%d%% collected";
+"stats.paid"                = "Paid";
+"stats.outstanding"         = "Outstanding";
+"stats.average"             = "Average";
+"stats.last.six"            = "Last 6 months";
 
 /* ── Detail ────────────────────────────────────── */
 "detail.still.owes"         = "STILL OWES YOU";
