@@ -8,6 +8,10 @@ import PhotosUI
 
 // MARK: - Profile Image Helper
 
+extension Notification.Name {
+    static let profileImageChanged = Notification.Name("profileImageChanged")
+}
+
 enum ProfileImageStore {
     static var url: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -17,6 +21,7 @@ enum ProfileImageStore {
     static func save(_ image: UIImage) {
         if let data = image.jpegData(compressionQuality: 0.85) {
             try? data.write(to: url)
+            NotificationCenter.default.post(name: .profileImageChanged, object: nil)
         }
     }
 

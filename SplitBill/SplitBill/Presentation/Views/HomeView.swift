@@ -19,6 +19,7 @@ struct HomeView: View {
 
     @State private var showCamera = false
     @State private var showOweSummary = false
+    @State private var profileImage: UIImage? = ProfileImageStore.load()
     @State private var haptics = UIImpactFeedbackGenerator(style: .medium)
     @State private var appeared = false
 
@@ -204,14 +205,28 @@ struct HomeView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     selectedTab = 3
                 }) {
-                    Circle()
-                        .fill(Color.appPrimary.opacity(0.12))
-                        .frame(width: 42, height: 42)
-                        .overlay(
-                            Image(systemName: "person.fill")
-                                .font(AppTheme.Fonts.inter(20, weight: .medium))
-                                .foregroundColor(Color.appPrimary)
-                        )
+                    Group {
+                        if let img = profileImage {
+                            Image(uiImage: img)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 42, height: 42)
+                                .clipShape(Circle())
+                        } else {
+                            Circle()
+                                .fill(Color.appPrimary.opacity(0.12))
+                                .frame(width: 42, height: 42)
+                                .overlay(
+                                    Image(systemName: "person.fill")
+                                        .font(AppTheme.Fonts.inter(20, weight: .medium))
+                                        .foregroundColor(Color.appPrimary)
+                                )
+                        }
+                    }
+                    .onAppear { profileImage = ProfileImageStore.load() }
+                    .onReceive(NotificationCenter.default.publisher(for: .profileImageChanged)) { _ in
+                        profileImage = ProfileImageStore.load()
+                    }
                 }
                 .buttonStyle(.plain)
 
