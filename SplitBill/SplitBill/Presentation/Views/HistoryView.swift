@@ -186,12 +186,12 @@ struct HistoryCardView: View {
     /// Stable per-person color (same name → same color), all dark enough for white initials.
     private func avatarColor(for name: String) -> Color {
         let colors: [Color] = [
-            Color(hex: "6C63F5"),   // purple
-            Color(hex: "0E9F8E"),   // teal
+            Color(hex: "22416F"),   // emerald
+            Color(hex: "A16207"),   // gold
             Color(hex: "E5586E"),   // rose
             Color(hex: "D97706"),   // amber
             Color(hex: "2563EB"),   // blue
-            Color(hex: "7C3AED"),   // violet
+            Color(hex: "0E7490"),   // cyan
         ]
         let seed = name.lowercased().unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
         return colors[seed % colors.count]

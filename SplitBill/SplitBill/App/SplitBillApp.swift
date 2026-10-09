@@ -17,25 +17,27 @@ struct SplitBillApp: App {
         // Adaptive background — follows system dark/light
         let bg = UIColor { t in
             t.userInterfaceStyle == .dark
-                ? UIColor(hex: "0D0D14")
-                : UIColor(hex: "F3F2FD")
+                ? UIColor(hex: "0A0E16")
+                : UIColor(hex: "F4F6FA")
         }
         let surface = UIColor { t in
             t.userInterfaceStyle == .dark
-                ? UIColor(hex: "15151F")
+                ? UIColor(hex: "111620")
                 : UIColor.white
         }
         let textPrimary = UIColor { t in
             t.userInterfaceStyle == .dark
-                ? UIColor(hex: "EEEAF8")
-                : UIColor(hex: "0D0B1A")
+                ? UIColor(hex: "E8EDF5")
+                : UIColor(hex: "0B1220")
         }
         let textSecondary = UIColor { t in
             t.userInterfaceStyle == .dark
-                ? UIColor(hex: "8A86AA")
-                : UIColor(hex: "6B6785")
+                ? UIColor(hex: "8A97AD")
+                : UIColor(hex: "5A6578")
         }
-        let accent = UIColor(hex: "6C63F5")
+        let accent = UIColor { t in
+            t.userInterfaceStyle == .dark ? UIColor(hex: "6E9CE6") : UIColor(hex: "22416F")
+        }
 
         // Tab bar
         let tabAppearance = UITabBarAppearance()

@@ -442,7 +442,7 @@ struct MainView: View {
         let colors: [Color] = [
             Color.appPrimary,
             Color.appSecondary,
-            Color(hex: "A29BFE"),
+            Color(hex: "8FAAD0"),
             Color(hex: "FD79A8"),
             Color(hex: "FDCB6E"),
             Color(hex: "00B894"),

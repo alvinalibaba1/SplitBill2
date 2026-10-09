@@ -49,41 +49,46 @@ extension Color {
     // Backgrounds
     static let appBackground = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "0D0D14")   // deep dark
-            : UIColor(hex: "F3F2FD")   // light lavender
+            ? UIColor(hex: "0A0E16")   // deep dark
+            : UIColor(hex: "F4F6FA")   // light lavender
     })
     static let appSurface = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "15151F")
+            ? UIColor(hex: "111620")
             : UIColor.white
     })
     static let appCard = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "1C1C2A")
+            ? UIColor(hex: "171D2A")
             : UIColor.white
     })
 
     // Brand — same in both modes
-    static let appPrimary   = Color(hex: "6C63F5")
-    static let appSecondary = Color(hex: "A29BFE")
+    static let appPrimary = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "6E9CE6") : UIColor(hex: "22416F")
+    })
+    static let appSecondary = Color(hex: "8FAAD0")
 
-    // Readable purple for text on card surfaces (≈6.9:1 on white)
-    static let appPurpleText = Color(UIColor { t in
+    // Champagne gold — use sparingly for premium touches
+    static let appAccent = Color(hex: "C8A96A")
+
+    // Readable brand color for text on card surfaces (≈6.9:1 on white)
+    static let appBrandText = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "A9A3FF")
-            : UIColor(hex: "4F46E5")
+            ? UIColor(hex: "9DBDEB")
+            : UIColor(hex: "14305A")
     })
     // Soft purple circle behind icons
     static let appIconChip = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "2A2745")
-            : UIColor(hex: "EEEBFF")
+            ? UIColor(hex: "1A2A44")
+            : UIColor(hex: "E6EDF7")
     })
     // Card border
     static let appCardBorder = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "2A2A3D")
-            : UIColor(hex: "E4E1FA")
+            ? UIColor(hex: "253044")
+            : UIColor(hex: "DCE3EE")
     })
     // Pending / unpaid status pill
     static let appWarningText = Color(UIColor { t in
@@ -103,13 +108,13 @@ extension Color {
     // Text
     static let textPrimary = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "EEEAF8")
-            : UIColor(hex: "0D0B1A")
+            ? UIColor(hex: "E8EDF5")
+            : UIColor(hex: "0B1220")
     })
     static let textSecondary = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "8A86AA")
-            : UIColor(hex: "6B6785")
+            ? UIColor(hex: "8A97AD")
+            : UIColor(hex: "5A6578")
     })
 }
 
@@ -119,8 +124,8 @@ struct AppTheme {
 
     struct Colors {
         static let primary      = Color.appPrimary
-        static let primaryDark  = Color(hex: "5651D8")
-        static let primaryLight = Color(hex: "6C63F5").opacity(0.15)
+        static let primaryDark  = Color(hex: "14305A")
+        static let primaryLight = Color(hex: "22416F").opacity(0.15)
         static let secondary    = Color.appSecondary
         static let background   = Color.appBackground
         static let surface      = Color.appSurface
@@ -163,7 +168,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(height: AppTheme.Dimensions.buttonHeight)
             .background(
                 LinearGradient(
-                    colors: [Color(hex: "6C63F5"), Color(hex: "5651D8")],
+                    colors: [Color(hex: "22416F"), Color(hex: "14305A")],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -171,7 +176,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .cornerRadius(16)
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.spring(response: 0.14, dampingFraction: 0.6), value: configuration.isPressed)
-            .shadow(color: Color(hex: "6C63F5").opacity(0.4), radius: 14, x: 0, y: 6)
+            .shadow(color: Color(hex: "22416F").opacity(0.4), radius: 14, x: 0, y: 6)
     }
 }
 

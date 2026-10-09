@@ -262,7 +262,7 @@ struct HomeView: View {
 
                     Text(totalOwed.toCurrency())
                         .roundedFont(36, weight: .bold)
-                        .foregroundColor(Color.appPurpleText)
+                        .foregroundColor(Color.appBrandText)
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: totalOwed)
 
@@ -301,7 +301,7 @@ struct HomeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .stroke(Color.appCardBorder, lineWidth: 1)
+                    .stroke(Color.appAccent.opacity(0.5), lineWidth: 1)
             )
             .shadow(color: Color.appPrimary.opacity(0.10), radius: 16, x: 0, y: 6)
         }
@@ -333,7 +333,7 @@ struct HomeView: View {
                     .padding(.vertical, 18)
                     .background(
                         LinearGradient(
-                            colors: [Color(hex: "6C63F5"), Color(hex: "5651D8")],
+                            colors: [Color(hex: "22416F"), Color(hex: "14305A")],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         )
                     )

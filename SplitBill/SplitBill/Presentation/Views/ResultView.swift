@@ -138,13 +138,13 @@ struct ResultView: View {
         .padding(.horizontal, 20)
         .background(
             LinearGradient(
-                colors: [Color(hex: "6C63F5"), Color(hex: "9189F7")],
+                colors: [Color(hex: "22416F"), Color(hex: "4A78B5")],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: Color(hex: "6C63F5").opacity(0.35), radius: 20, x: 0, y: 8)
+        .shadow(color: Color(hex: "22416F").opacity(0.35), radius: 20, x: 0, y: 8)
     }
 
     // MARK: - Split Breakdown
@@ -328,12 +328,12 @@ struct ResultView: View {
                         .padding(.vertical, 14)
                         .background(
                             LinearGradient(
-                                colors: [Color(hex: "6C63F5"), Color(hex: "9189F7")],
+                                colors: [Color(hex: "22416F"), Color(hex: "4A78B5")],
                                 startPoint: .leading, endPoint: .trailing
                             )
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: Color(hex: "6C63F5").opacity(0.35), radius: 8, y: 3)
+                        .shadow(color: Color(hex: "22416F").opacity(0.35), radius: 8, y: 3)
                 }
             }
             .padding(.horizontal, 16)
@@ -353,7 +353,7 @@ struct ResultView: View {
 
     private func avatarColor(index: Int) -> Color {
         let colors: [Color] = [
-            Color(hex: "6C63F5"), Color(hex: "9189F7"),
+            Color(hex: "22416F"), Color(hex: "4A78B5"),
             Color(hex: "E84393"), Color(hex: "F59E0B"),
             Color(hex: "34D399"), Color(hex: "3B82F6"),
         ]

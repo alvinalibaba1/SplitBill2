@@ -167,7 +167,7 @@ struct HistoryDetailView: View {
             .padding(.bottom, 22)
             .background(
                 LinearGradient(
-                    colors: [Color(hex: "6C63F5"), Color(hex: "9189F7")],
+                    colors: [Color(hex: "22416F"), Color(hex: "4A78B5")],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -204,7 +204,7 @@ struct HistoryDetailView: View {
             .background(Color.appCard)
         }
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: Color(hex: "6C63F5").opacity(0.3), radius: 20, x: 0, y: 8)
+        .shadow(color: Color(hex: "22416F").opacity(0.3), radius: 20, x: 0, y: 8)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 12)
     }
@@ -254,7 +254,7 @@ struct HistoryDetailView: View {
                             LinearGradient(
                                 colors: allPaid
                                     ? [Color(hex: "34D399"), Color(hex: "34D399").opacity(0.7)]
-                                    : [Color(hex: "6C63F5"), Color(hex: "9189F7")],
+                                    : [Color(hex: "22416F"), Color(hex: "4A78B5")],
                                 startPoint: .leading, endPoint: .trailing
                             )
                         )
@@ -464,7 +464,7 @@ struct HistoryDetailView: View {
     private func avatarColor(name: String, isPaid: Bool) -> Color {
         if isPaid { return Color.textSecondary }
         let colors: [Color] = [
-            Color(hex: "6C63F5"), Color(hex: "9189F7"),
+            Color(hex: "22416F"), Color(hex: "4A78B5"),
             Color(hex: "E84393"), Color(hex: "F59E0B"),
             Color(hex: "34D399"), Color(hex: "3B82F6"),
         ]
