@@ -49,26 +49,31 @@ struct MainView: View {
                             .padding(.top, 12)
                     }
 
-                    // Hero: total amount + bill name
-                    totalCard.padding(.top, 16)
+                    // 1 — Bill details
+                    stepHeader(1, "BILL DETAILS", done: !viewModel.billTitle.isEmpty || viewModel.totalAmountDouble > 0)
+                        .padding(.top, 8)
+                    totalCard
 
-                    // Equal / Custom split mode
+                    // 2 — How to split
+                    stepHeader(2, "HOW TO SPLIT", done: false)
                     splitModePicker
 
-                    // People
-                    sectionHeader("PEOPLE", count: viewModel.people.count)
+                    // 3 — People & their items
+                    stepHeader(3, "PEOPLE", done: !viewModel.people.isEmpty && viewModel.people.allSatisfy { $0.amount > 0 },
+                               count: viewModel.people.count)
                     peopleSectionCard
 
-                    // Extras
-                    sectionHeader("EXTRAS")
+                    // 4 — Extras
+                    stepHeader(4, "EXTRAS · OPTIONAL", done: !viewModel.adjustments.isEmpty)
                     extrasSectionCard
 
-                    Color.clear.frame(height: 100)
+                    // Summary + CTA live at the end of the content (not pinned)
+                    stepHeader(5, "SUMMARY", done: viewModel.hasValidSplit)
+                    summaryFooter
+
+                    Color.clear.frame(height: 120)   // clears the floating tab bar
                 }
             }
-
-            // Sticky bottom bar
-            calculateBar
         }
         .navigationTitle(viewModel.billTitle.isEmpty ? "New Bill" : viewModel.billTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -241,7 +246,6 @@ struct MainView: View {
         .background(Color.appCardBorder.opacity(0.7))
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .padding(.horizontal, 16)
-        .padding(.top, 14)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.isEqualSplit)
     }
 
@@ -266,13 +270,30 @@ struct MainView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Section Header
-    private func sectionHeader(_ title: String, count: Int? = nil) -> some View {
-        HStack(spacing: 8) {
+    // MARK: - Step Header
+    private func stepHeader(_ number: Int, _ title: String, done: Bool, count: Int? = nil) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(done ? Color.appSuccess : Color.appIconChip)
+                    .frame(width: 22, height: 22)
+                if done {
+                    Image(systemName: "checkmark")
+                        .font(AppTheme.Fonts.inter(10, weight: .bold))
+                        .foregroundColor(.white)
+                } else {
+                    Text("\(number)")
+                        .font(AppTheme.Fonts.inter(11, weight: .bold))
+                        .foregroundColor(Color.appBrandText)
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: done)
+
             Text(title)
                 .font(AppTheme.Fonts.inter(12, weight: .semibold))
                 .foregroundColor(Color.textSecondary)
                 .tracking(0.8)
+
             if let count, count > 0 {
                 Text("\(count)")
                     .font(AppTheme.Fonts.inter(11, weight: .bold))
@@ -285,8 +306,8 @@ struct MainView: View {
             Spacer()
         }
         .padding(.horizontal, 20)
-        .padding(.top, 26)
-        .padding(.bottom, 8)
+        .padding(.top, 24)
+        .padding(.bottom, 10)
     }
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -495,67 +516,78 @@ struct MainView: View {
         .padding(.vertical, 13)
     }
 
-    // MARK: - Sticky Bottom Bar
-    private var calculateBar: some View {
-        VStack(spacing: 0) {
-            Divider()
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    // ✅ Shows avg/person when people exist — removes duplicate total info
-                    // Shows plain total when no people yet (still useful context)
-                    if viewModel.people.isEmpty {
-                        Text("Total")
-                            .font(AppTheme.Fonts.inter(12, weight: .medium))
-                            .foregroundColor(Color.textSecondary)
-                        Text(viewModel.totalForSplit > 0 ? viewModel.totalForSplit.toCurrency() : "Rp 0")
-                            .font(AppTheme.Fonts.inter(17, weight: .bold))
-                            .foregroundColor(Color.textPrimary)
-                            .contentTransition(.numericText())
-                            .animation(.spring(response: 0.3), value: viewModel.totalForSplit)
-                    } else {
-                        Text("Avg per person")
-                            .font(AppTheme.Fonts.inter(12, weight: .medium))
-                            .foregroundColor(Color.textSecondary)
-                        Text(viewModel.averageAmount.toCurrency())
-                            .font(AppTheme.Fonts.inter(17, weight: .bold))
-                            .foregroundColor(Color.appBrandText)
-                            .contentTransition(.numericText())
-                            .animation(.spring(response: 0.3), value: viewModel.averageAmount)
-                    }
+    // MARK: - Summary Footer (scrolls with content)
+    private var summaryFooter: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 10) {
+                summaryRow("People", value: "\(viewModel.people.count)")
+                summaryRow("Total", value: viewModel.totalForSplit > 0 ? viewModel.totalForSplit.toCurrency() : "Rp 0")
+                Divider()
+                HStack {
+                    Text("Avg per person")
+                        .font(AppTheme.Fonts.inter(15, weight: .semibold))
+                        .foregroundColor(Color.textPrimary)
+                    Spacer()
+                    Text(viewModel.averageAmount.toCurrency())
+                        .font(AppTheme.Fonts.inter(20, weight: .bold))
+                        .foregroundColor(Color.appBrandText)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.3), value: viewModel.averageAmount)
                 }
-
-                Spacer()
-
-                // ✅ "Split Bill" — more natural CTA than "Calculate"
-                Button(action: {
-                    let history = BillHistory(
-                        title: viewModel.billTitle,
-                        totalAmount: viewModel.totalForSplit,
-                        people: viewModel.people,
-                        splitAmount: viewModel.averageAmount
-                    )
-                    HistoryViewModel.shared.saveHistory(history)
-                    navigateResult = true
-                }) {
-                    Text("Split Bill")
-                        .font(AppTheme.Fonts.inter(16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 14)
-                        .background(
-                            viewModel.hasValidSplit
-                                ? AnyShapeStyle(LinearGradient(colors: [Color.appPrimary, Color(hex: "14305A")],
-                                                               startPoint: .topLeading, endPoint: .bottomTrailing))
-                                : AnyShapeStyle(Color.textSecondary.opacity(0.25))
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .disabled(!viewModel.hasValidSplit)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(Color.appBackground)
+
+            Button(action: splitBill) {
+                Text("Split Bill")
+                    .font(AppTheme.Fonts.inter(17, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(
+                        viewModel.hasValidSplit
+                            ? AnyShapeStyle(LinearGradient(colors: [Color.appPrimary, Color(hex: "14305A")],
+                                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+                            : AnyShapeStyle(Color.textSecondary.opacity(0.25))
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.97))
+            .disabled(!viewModel.hasValidSplit)
+
+            if !viewModel.hasValidSplit {
+                Text(viewModel.people.isEmpty ? "Add at least one person to continue" : "Add an amount to continue")
+                    .font(AppTheme.Fonts.inter(12, weight: .regular))
+                    .foregroundColor(Color.textSecondary)
+            }
         }
+        .padding(18)
+        .background(Color.appCard)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.appCardBorder, lineWidth: 1))
+        .shadow(color: Color.appPrimary.opacity(0.06), radius: 10, x: 0, y: 4)
+        .padding(.horizontal, 16)
+    }
+
+    private func summaryRow(_ label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(AppTheme.Fonts.inter(14, weight: .regular))
+                .foregroundColor(Color.textSecondary)
+            Spacer()
+            Text(value)
+                .font(AppTheme.Fonts.inter(14, weight: .semibold))
+                .foregroundColor(Color.textPrimary)
+        }
+    }
+
+    private func splitBill() {
+        let history = BillHistory(
+            title: viewModel.billTitle,
+            totalAmount: viewModel.totalForSplit,
+            people: viewModel.people,
+            splitAmount: viewModel.averageAmount
+        )
+        HistoryViewModel.shared.saveHistory(history)
+        navigateResult = true
     }
 }
 
