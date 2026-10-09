@@ -9,7 +9,9 @@ import Foundation
 import Combine
 
 class SplitBillViewModel: ObservableObject {
-    @Published var totalAmount: String
+    @Published var totalAmount: String {
+        didSet { if isEqualSplit { recalcTotals() } }
+    }
     @Published var billTitle: String
     @Published var people: [Person] = []
     @Published var items: [BillItem] = []
@@ -51,7 +53,14 @@ class SplitBillViewModel: ObservableObject {
     }
 
     var totalForSplit: Double {
-        computedTotal > 0 ? computedTotal : totalAmountDouble
+        // Equal split follows the typed total so editing it re-divides immediately.
+        if isEqualSplit, totalAmountDouble > 0 { return totalAmountDouble }
+        return computedTotal > 0 ? computedTotal : totalAmountDouble
+    }
+
+    /// Sum of what has been assigned to people so far.
+    var assignedTotal: Double {
+        people.reduce(0) { $0 + $1.amount }
     }
 
     var hasValidSplit: Bool {
