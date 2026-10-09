@@ -9,7 +9,11 @@ import UIKit
 @main
 struct SplitBillApp: App {
 
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
+        AppTheme.Fonts.register()
+
         // Adaptive background — follows system dark/light
         let bg = UIColor { t in
             t.userInterfaceStyle == .dark
@@ -43,6 +47,7 @@ struct SplitBillApp: App {
         tabAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: accent]
         UITabBar.appearance().standardAppearance   = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+        UITabBar.appearance().unselectedItemTintColor = textSecondary
 
         // Navigation bar
         let navAppearance = UINavigationBarAppearance()

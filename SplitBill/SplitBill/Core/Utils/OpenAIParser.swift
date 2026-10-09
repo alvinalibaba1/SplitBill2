@@ -2,12 +2,8 @@
 //  OpenAIParser.swift
 //  SplitBill
 //
-//  GPT-4o mini fallback for receipt parsing — used when Gemini is unavailable
-//  (rate-limited / regional quota). Same prompt and JSON contract as
-//  GeminiParser, so results are interchangeable.
-//
-//  Pricing note: gpt-4o mini is pay-as-you-go (~Rp 6–15 per scan with a
-//  1024px image at detail "high"). Requires OpenAI billing to be set up.
+//  Primary multimodal AI parser using OpenAI GPT-4o mini.
+//  Sends receipt image directly to OpenAI Chat Completions API with detail "high".
 //
 
 import Foundation
@@ -16,6 +12,8 @@ import UIKit
 struct OpenAIParser {
 
     typealias ParsedResult = GeminiParser.ParsedResult
+
+    static let model = "gpt-4o-mini"
 
     enum OpenAIError: Error {
         case missingAPIKey
@@ -26,10 +24,10 @@ struct OpenAIParser {
 
     // MARK: - Public API
 
-    /// Sends the receipt image to GPT-4o mini and returns structured data.
-    /// Single attempt, no retry — this is the paid backup, fail fast to local.
+    /// Sends the receipt image to GPT and returns structured data.
+    /// Retries once after 2 s on transient errors before throwing.
     static func parse(image: UIImage) async throws -> ParsedResult {
-        let key = Secrets.openAIAPIKey
+        let key = Secrets.openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty, key != "YOUR_OPENAI_API_KEY_HERE" else {
             throw OpenAIError.missingAPIKey
         }
@@ -40,8 +38,25 @@ struct OpenAIParser {
         }
         let base64 = jpegData.base64EncodedString()
 
+        do {
+            return try await sendRequest(base64: base64, apiKey: key)
+        } catch OpenAIError.missingAPIKey {
+            throw OpenAIError.missingAPIKey
+        } catch let OpenAIError.badResponse(code, body) where code == 401 || code == 403 {
+            // Bad auth / invalid key — fail immediately so fallback can take over
+            throw OpenAIError.badResponse(code, body)
+        } catch {
+            print("[OpenAIParser] ⚠️ First attempt failed (\(error)) — retrying in 2 s")
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            return try await sendRequest(base64: base64, apiKey: key)
+        }
+    }
+
+    // MARK: - Request
+
+    private static func sendRequest(base64: String, apiKey: String) async throws -> ParsedResult {
         let body: [String: Any] = [
-            "model": "gpt-4o-mini",
+            "model": model,
             "temperature": 0,
             "max_tokens": 4096,
             "response_format": ["type": "json_object"],
@@ -60,10 +75,11 @@ struct OpenAIParser {
         var request = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
+        print("[OpenAIParser] 🚀 Sending image to \(model)...")
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
@@ -82,7 +98,7 @@ struct OpenAIParser {
             throw OpenAIError.noContent
         }
 
-        print("[OpenAIParser] ✅ HTTP 200 — parsing response (\(data.count) bytes)")
+        print("[OpenAIParser] ✅ HTTP 200 — received response (\(data.count) bytes)")
         return try GeminiParser.parseReceiptPayload(text)
     }
 }

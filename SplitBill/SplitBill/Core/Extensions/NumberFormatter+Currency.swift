@@ -31,21 +31,21 @@ extension String {
         return Double(cleaned) ?? 0.0
     }
 
-    func formatAsCurrency() -> String {
-        // Remove non-digits
-        let digits = self.filter { $0.isNumber }
-        guard !digits.isEmpty else { return "" }
+        func formatAsCurrency() -> String {
+            // Remove non-digits
+            let digits = self.filter { $0.isNumber }
+            guard !digits.isEmpty else { return "" }
 
-        // Convert to double and format
-        if let number = Double(digits) {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.groupingSeparator = "."
-            formatter.decimalSeparator = ","
-            formatter.maximumFractionDigits = 0
+            // Convert to double and format
+            if let number = Double(digits) {
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .decimal
+                formatter.groupingSeparator = "."
+                formatter.decimalSeparator = ","
+                formatter.maximumFractionDigits = 0
 
-            return formatter.string(from: NSNumber(value: number)) ?? digits
-        }
+                return formatter.string(from: NSNumber(value: number)) ?? digits
+            }
 
         return digits
     }

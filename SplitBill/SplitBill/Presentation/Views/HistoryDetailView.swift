@@ -10,10 +10,12 @@ struct HistoryDetailView: View {
 
     @ObservedObject private var historyVM = HistoryViewModel.shared
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @State private var showShare   = false
+    @State private var showShare        = false
     @State private var shareItems: [Any] = []
-    @State private var justMarkedId: UUID? = nil
-    @State private var appeared    = false
+    @State private var justMarkedId: UUID?         = nil
+    @State private var appeared                    = false
+    @State private var remindingPerson: HistoryPerson? = nil
+    @State private var pendingReminderIds: Set<UUID>   = []
 
     private var bankAccounts: [BankAccount] { BankAccountStore.load() }
 
@@ -63,6 +65,7 @@ struct HistoryDetailView: View {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05)) {
                     appeared = true
                 }
+                loadPendingReminders()
             }
         }
         .navigationTitle("")
@@ -78,6 +81,31 @@ struct HistoryDetailView: View {
         }
         .sheet(isPresented: $showShare) {
             ActivityView(activityItems: shareItems)
+        }
+        .confirmationDialog(
+            remindingPerson.map { "Remind for \($0.name)" } ?? "Set Reminder",
+            isPresented: Binding(
+                get: { remindingPerson != nil },
+                set: { if !$0 { remindingPerson = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let person = remindingPerson {
+                ForEach(ReminderOption.allCases, id: \.self) { option in
+                    Button(option.label) {
+                        NotificationManager.requestPermission()
+                        NotificationManager.scheduleReminder(
+                            for: person,
+                            bill: liveBill,
+                            at: NotificationManager.reminderDate(option: option)
+                        )
+                        pendingReminderIds.insert(person.id)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        remindingPerson = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { remindingPerson = nil }
+            }
         }
     }
 
@@ -342,6 +370,19 @@ struct HistoryDetailView: View {
 
             Spacer()
 
+            // Bell reminder button — only for unpaid people
+            if !isPaidSection {
+                Button(action: { remindingPerson = person }) {
+                    Image(systemName: pendingReminderIds.contains(person.id)
+                          ? "bell.fill" : "bell")
+                        .font(AppTheme.Fonts.inter(16))
+                        .foregroundColor(pendingReminderIds.contains(person.id)
+                                         ? Color.appSecondary : Color.textSecondary.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 4)
+            }
+
             markPaidButton(person: person, isPaidSection: isPaidSection)
         }
         .padding(.horizontal, 16)
@@ -362,6 +403,11 @@ struct HistoryDetailView: View {
                     personId: person.id,
                     isPaid: !person.isPaid
                 )
+                // Cancel any pending reminder when marking as paid
+                if !person.isPaid {
+                    NotificationManager.cancelReminder(billId: liveBill.id, personId: person.id)
+                    pendingReminderIds.remove(person.id)
+                }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
                 withAnimation { justMarkedId = nil }
@@ -408,6 +454,12 @@ struct HistoryDetailView: View {
     }
 
     // MARK: - Helpers
+
+    private func loadPendingReminders() {
+        NotificationManager.pendingPersonIds(for: liveBill.id) { ids in
+            pendingReminderIds = ids
+        }
+    }
 
     private func avatarColor(name: String, isPaid: Bool) -> Color {
         if isPaid { return Color.textSecondary }

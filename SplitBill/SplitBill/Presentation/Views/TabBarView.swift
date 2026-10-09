@@ -9,6 +9,7 @@ struct TabBarView: View {
 
     @State private var selectedTab = 0
     @StateObject private var loadingState = LoadingState.shared
+    @ObservedObject private var appState  = AppState.shared
 
     // Independent routers per tab
     @StateObject private var homeRouter    = NavigationRouter()
@@ -68,6 +69,21 @@ struct TabBarView: View {
                 .tag(3)
             }
             .tint(Color.appPrimary)
+        .onChange(of: appState.pendingBillId) { billId in
+            guard let billId,
+                  let bill = HistoryViewModel.shared.history.first(where: { $0.id == billId })
+            else {
+                appState.pendingBillId = nil
+                return
+            }
+            // Switch to History tab, pop to root, then push the bill
+            selectedTab = 2
+            historyRouter.popToRoot()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                historyRouter.push(.historyDetail(bill))
+                appState.pendingBillId = nil
+            }
+        }
 
             // Global loading overlay
             if loadingState.isProcessingScan {

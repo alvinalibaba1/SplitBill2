@@ -69,8 +69,8 @@ struct HomeView: View {
         LoadingState.shared.isProcessingScan = true
 
         Task {
-            // ── Step 1: AI reads the IMAGE — Gemini (free) first, GPT-4o mini
-            //    backup, on-device column parser as the last resort ────────────
+            // ── Step 1: AI reads the IMAGE — OpenAI GPT (primary),
+            //    Gemini (backup), on-device column parser as last resort ──────
             let billName: String
             let total: String
             let items: [(name: String, price: Double)]
@@ -79,13 +79,13 @@ struct HomeView: View {
 
             var aiResult: GeminiParser.ParsedResult?
             do {
-                aiResult = try await GeminiParser.parse(image: normalized)
+                aiResult = try await OpenAIParser.parse(image: normalized)
             } catch {
-                print("[GeminiParser] ❌ Error: \(error) — trying GPT-4o mini")
+                print("[OpenAIParser] ❌ Error: \(error) — trying Gemini fallback")
                 do {
-                    aiResult = try await OpenAIParser.parse(image: normalized)
+                    aiResult = try await GeminiParser.parse(image: normalized)
                 } catch {
-                    print("[OpenAIParser] ❌ Error: \(error) — falling back to local parser")
+                    print("[GeminiParser] ❌ Error: \(error) — falling back to local parser")
                 }
             }
 
@@ -257,12 +257,12 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("home.owe.title".localized)
                         .roundedFont(11, weight: .semibold)
-                        .foregroundColor(Color.appPrimary.opacity(0.7))
+                        .foregroundColor(Color.textSecondary)
                         .tracking(0.8)
 
                     Text(totalOwed.toCurrency())
                         .roundedFont(36, weight: .bold)
-                        .foregroundColor(Color.appPrimary)
+                        .foregroundColor(Color.appPurpleText)
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: totalOwed)
 
@@ -274,7 +274,7 @@ struct HomeView: View {
                         } else if billsWithUnpaid == 0 {
                             Text("home.bills.settled".localized)
                                 .roundedFont(13, weight: .medium)
-                                .foregroundColor(.green)
+                                .foregroundColor(Color.appSuccess)
                         } else {
                             let fmt = billsWithUnpaid == 1 ? "home.subtitle.single".localized : "home.subtitle.plural".localized
                             Text(String(format: fmt, billsWithUnpaid))
@@ -288,7 +288,7 @@ struct HomeView: View {
 
                 ZStack {
                     Circle()
-                        .fill(Color.appPrimary.opacity(0.1))
+                        .fill(Color.appIconChip)
                         .frame(width: 56, height: 56)
                     Image(systemName: "person.2.fill")
                         .font(AppTheme.Fonts.inter(22))
@@ -297,18 +297,13 @@ struct HomeView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
-            .background(
-                LinearGradient(
-                    colors: [Color.appPrimary.opacity(0.13), Color.appSecondary.opacity(0.06)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-            )
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .stroke(Color.appPrimary.opacity(0.3), lineWidth: 1)
+                    .stroke(Color.appCardBorder, lineWidth: 1)
             )
-            .shadow(color: Color.appPrimary.opacity(0.25), radius: 28, x: 0, y: 0)
+            .shadow(color: Color.appPrimary.opacity(0.10), radius: 16, x: 0, y: 6)
         }
         .buttonStyle(.plain)
     }

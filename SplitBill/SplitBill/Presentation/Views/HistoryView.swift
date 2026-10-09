@@ -104,14 +104,14 @@ struct HistoryCardView: View {
                     if unpaidCount == 0 {
                         Label("history.all.paid".localized, systemImage: "checkmark.circle.fill")
                             .font(AppTheme.Fonts.inter(12, weight: .semibold))
-                            .foregroundColor(.green)
+                            .foregroundColor(Color.appSuccess)
                     } else {
                         Text("\(unpaidCount) \("history.unpaid".localized)")
                             .font(AppTheme.Fonts.inter(12, weight: .semibold))
-                            .foregroundColor(Color.appSecondary)
+                            .foregroundColor(Color.appWarningText)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4)
-                            .background(Color.appSecondary.opacity(0.12))
+                            .background(Color.appWarningBackground)
                             .clipShape(Capsule())
                     }
                 } else {
@@ -141,7 +141,7 @@ struct HistoryCardView: View {
             ForEach(Array(visiblePeople.enumerated()), id: \.element.id) { index, person in
                 avatarCircle(
                     initial: String(person.name.prefix(1)).uppercased(),
-                    color: avatarColor(index: index)
+                    color: avatarColor(for: person.name)
                 )
                 .offset(x: CGFloat(index) * -8)
                 .zIndex(Double(visiblePeople.count - index))
@@ -183,16 +183,18 @@ struct HistoryCardView: View {
         }
     }
 
-    private func avatarColor(index: Int) -> Color {
+    /// Stable per-person color (same name → same color), all dark enough for white initials.
+    private func avatarColor(for name: String) -> Color {
         let colors: [Color] = [
-            Color.appPrimary,
-            Color.appSecondary,
-            Color(hex: "A29BFE"),
-            Color(hex: "FD79A8"),
-            Color(hex: "FDCB6E"),
-            Color(hex: "00B894"),
+            Color(hex: "6C63F5"),   // purple
+            Color(hex: "0E9F8E"),   // teal
+            Color(hex: "E5586E"),   // rose
+            Color(hex: "D97706"),   // amber
+            Color(hex: "2563EB"),   // blue
+            Color(hex: "7C3AED"),   // violet
         ]
-        return colors[index % colors.count]
+        let seed = name.lowercased().unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
+        return colors[seed % colors.count]
     }
 }
 

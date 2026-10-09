@@ -67,6 +67,39 @@ extension Color {
     static let appPrimary   = Color(hex: "6C63F5")
     static let appSecondary = Color(hex: "A29BFE")
 
+    // Readable purple for text on card surfaces (≈6.9:1 on white)
+    static let appPurpleText = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "A9A3FF")
+            : UIColor(hex: "4F46E5")
+    })
+    // Soft purple circle behind icons
+    static let appIconChip = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "2A2745")
+            : UIColor(hex: "EEEBFF")
+    })
+    // Card border
+    static let appCardBorder = Color(UIColor { t in
+        t.userInterfaceStyle == .dark
+            ? UIColor(hex: "2A2A3D")
+            : UIColor(hex: "E4E1FA")
+    })
+    // Pending / unpaid status pill
+    static let appWarningText = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "FBBF24") : UIColor(hex: "B45309")
+    })
+    static let appWarningBackground = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "3A2E12") : UIColor(hex: "FEF3C7")
+    })
+    // Money semantics
+    static let appSuccess = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "34D399") : UIColor(hex: "16A34A")
+    })
+    static let appDanger = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "F87171") : UIColor(hex: "EF5B5B")
+    })
+
     // Text
     static let textPrimary = Color(UIColor { t in
         t.userInterfaceStyle == .dark
@@ -104,20 +137,17 @@ struct AppTheme {
         static let buttonHeight: CGFloat = 56
     }
 
-    // MARK: - Inter Font
+    // MARK: - Plus Jakarta Sans (variable font, registered at launch)
     struct Fonts {
+        /// Registers the bundled font file. Call once at app start.
+        static func register() {
+            guard let url = Bundle.main.url(forResource: "PlusJakartaSans", withExtension: "ttf") else { return }
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+
+        /// Name kept as `inter` so existing call sites keep working.
         static func inter(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-            let name: String
-            switch weight {
-            case .black:    name = "Inter-Black"
-            case .bold:     name = "Inter-Bold"
-            case .semibold: name = "Inter-SemiBold"
-            case .medium:   name = "Inter-Medium"
-            case .light:    name = "Inter-Light"
-            case .thin:     name = "Inter-Thin"
-            default:        name = "Inter-Regular"
-            }
-            return Font.custom(name, size: size)
+            Font.custom("Plus Jakarta Sans", size: size).weight(weight)
         }
     }
 }
