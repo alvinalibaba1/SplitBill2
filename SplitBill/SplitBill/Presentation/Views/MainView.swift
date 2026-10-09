@@ -138,7 +138,7 @@ struct MainView: View {
     // MARK: - Total + Name Card
     private var totalCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("TOTAL BILL")
+            Text(viewModel.isEqualSplit ? "TOTAL BILL" : "TOTAL BILL · OPTIONAL")
                 .font(AppTheme.Fonts.inter(11, weight: .semibold))
                 .foregroundColor(Color.textSecondary)
                 .tracking(0.8)
@@ -213,8 +213,16 @@ struct MainView: View {
         } else if total > 0, viewModel.isEqualSplit, !viewModel.people.isEmpty {
             Label("Each person pays \(viewModel.averageAmount.toCurrency())", systemImage: "equal.circle.fill")
                 .foregroundColor(Color.appBrandText)
+        } else if !viewModel.isEqualSplit {
+            if assigned > 0 {
+                Label("\(assigned.toCurrency()) from items so far", systemImage: "list.bullet")
+                    .foregroundColor(Color.appBrandText)
+            } else {
+                Text("Add each person's items — the total adds up for you")
+                    .foregroundColor(Color.textSecondary)
+            }
         } else {
-            Text("Enter the bill total, or add items per person")
+            Text("Enter the bill total to divide it between everyone")
                 .foregroundColor(Color.textSecondary)
         }
     }
@@ -222,11 +230,11 @@ struct MainView: View {
     // MARK: - Split Mode (Equal / Custom)
     private var splitModePicker: some View {
         HStack(spacing: 4) {
+            modeButton(title: "By items", icon: "list.bullet.rectangle.fill", isOn: !viewModel.isEqualSplit) {
+                viewModel.isEqualSplit = false
+            }
             modeButton(title: "Split equally", icon: "equal.square.fill", isOn: viewModel.isEqualSplit) {
                 viewModel.isEqualSplit = true
-            }
-            modeButton(title: "Custom amounts", icon: "slider.horizontal.3", isOn: !viewModel.isEqualSplit) {
-                viewModel.isEqualSplit = false
             }
         }
         .padding(4)
@@ -305,7 +313,7 @@ struct MainView: View {
                         Text("Who's splitting?")
                             .font(AppTheme.Fonts.inter(15, weight: .semibold))
                             .foregroundColor(Color.textPrimary)
-                        Text("Add the people sharing this bill")
+                        Text("Add everyone, then tap a person to add what they ordered")
                             .font(AppTheme.Fonts.inter(13, weight: .regular))
                             .foregroundColor(Color.textSecondary)
                     }
@@ -359,9 +367,18 @@ struct MainView: View {
                             .foregroundColor(.white)
                     )
 
-                Text(person.name)
-                    .font(AppTheme.Fonts.inter(16, weight: .medium))
-                    .foregroundColor(Color.textPrimary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(person.name)
+                        .font(AppTheme.Fonts.inter(16, weight: .medium))
+                        .foregroundColor(Color.textPrimary)
+                    if !viewModel.isEqualSplit {
+                        let mine = viewModel.items.filter { $0.personId == person.id }
+                        Text(mine.isEmpty ? "No items yet" : mine.map(\.name).joined(separator: ", "))
+                            .font(AppTheme.Fonts.inter(12, weight: .regular))
+                            .foregroundColor(Color.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
 
                 Spacer()
 
@@ -373,8 +390,8 @@ struct MainView: View {
                         .animation(.spring(response: 0.3), value: person.amount)
                 } else if !viewModel.isEqualSplit {
                     Text("Add items")
-                        .font(AppTheme.Fonts.inter(13, weight: .medium))
-                        .foregroundColor(Color.textSecondary)
+                        .font(AppTheme.Fonts.inter(13, weight: .semibold))
+                        .foregroundColor(Color.appBrandText)
                 }
 
                 Image(systemName: "chevron.right")
