@@ -37,6 +37,7 @@ struct HistoryView: View {
                         NavigationLink(destination: HistoryDetailView(bill: bill)) {
                             HistoryCardView(bill: bill, showPaymentStatus: true)
                         }
+                        .navigationLinkIndicatorVisibility(.hidden)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
