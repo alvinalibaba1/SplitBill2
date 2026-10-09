@@ -13,9 +13,7 @@ struct ProfileView: View {
     @AppStorage("appLanguage") private var currentLanguage: String = "en"
 
     @State private var profileImage: UIImage?        = ProfileImageStore.load()
-    @State private var photoItem: PhotosPickerItem?  = nil
     @State private var bankAccounts: [BankAccount]   = BankAccountStore.load()
-    @State private var showBankSheet                 = false
     @State private var showLanguageSheet             = false
 
     var body: some View {
@@ -25,9 +23,11 @@ struct ProfileView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
 
-                    heroCard
-                    personalCard
-                    paymentCard
+                    NavigationLink(destination: EditProfileView()) {
+                        heroCard
+                    }
+                    .buttonStyle(PressableButtonStyle(scale: 0.98))
+
                     preferencesCard
                 }
                 .padding(.horizontal, 16)
@@ -37,9 +37,9 @@ struct ProfileView: View {
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showBankSheet) {
-            BankListSheet(bankAccounts: $bankAccounts)
-                .presentationDetents([.medium, .large])
+        .onAppear {
+            profileImage = ProfileImageStore.load()
+            bankAccounts = BankAccountStore.load()
         }
         .sheet(isPresented: $showLanguageSheet) {
             LanguagePickerSheet()
@@ -52,62 +52,34 @@ struct ProfileView: View {
     private var heroCard: some View {
         HStack(spacing: 16) {
 
-            // Avatar picker
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                ZStack(alignment: .bottomTrailing) {
-                    Group {
-                        if let img = profileImage {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFill()
-                        } else {
-                            ZStack {
-                                Color.appPrimary.opacity(0.12)
-                                if userName.isEmpty {
-                                    Image(systemName: "person.fill")
-                                        .font(AppTheme.Fonts.inter(30, weight: .medium))
-                                        .foregroundColor(Color.appPrimary)
-                                } else {
-                                    Text(String(userName.prefix(1)).uppercased())
-                                        .roundedFont(30, weight: .bold)
-                                        .foregroundColor(Color.appPrimary)
-                                }
-                            }
-                        }
-                    }
-                    .frame(width: 72, height: 72)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.appPrimary.opacity(0.12), lineWidth: 2))
-
-                    // Camera badge
+            // Avatar
+            Group {
+                if let img = profileImage {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else {
                     ZStack {
-                        Circle()
-                            .fill(Color.appPrimary)
-                            .frame(width: 24, height: 24)
-                            .shadow(color: Color.appPrimary.opacity(0.3), radius: 4, y: 2)
-                        Image(systemName: "camera.fill")
-                            .font(AppTheme.Fonts.inter(10, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                    .offset(x: 2, y: 2)
-                }
-            }
-            .buttonStyle(.plain)
-            .onChange(of: photoItem) { _, item in
-                Task {
-                    if let data = try? await item?.loadTransferable(type: Data.self),
-                       let img = UIImage(data: data) {
-                        await MainActor.run {
-                            profileImage = img
-                            ProfileImageStore.save(img)
+                        Color.appIconChip
+                        if userName.isEmpty {
+                            Image(systemName: "person.fill")
+                                .font(AppTheme.Fonts.inter(30, weight: .medium))
+                                .foregroundColor(Color.appPrimary)
+                        } else {
+                            Text(String(userName.prefix(1)).uppercased())
+                                .roundedFont(30, weight: .bold)
+                                .foregroundColor(Color.appPrimary)
                         }
                     }
                 }
             }
+            .frame(width: 72, height: 72)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color.appCardBorder, lineWidth: 2))
 
             // Name + bio + bank pill
             VStack(alignment: .leading, spacing: 6) {
-                Text(userName.isEmpty ? "Set your name →" : userName)
+                Text(userName.isEmpty ? "Set up your profile" : userName)
                     .roundedFont(20, weight: .bold)
                     .foregroundColor(userName.isEmpty ? Color.textSecondary : Color.textPrimary)
 
@@ -115,7 +87,7 @@ struct ProfileView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "building.columns.fill")
                             .font(AppTheme.Fonts.inter(10))
-                            .foregroundColor(Color.appPrimary.opacity(0.7))
+                            .foregroundColor(Color.appPrimary)
                         Text(bankAccounts.count > 1
                              ? "\(first.bankName) +\(bankAccounts.count - 1) more"
                              : "\(first.bankName) · \(maskedNumber(first.accountNumber))")
@@ -124,63 +96,26 @@ struct ProfileView: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Color.appPrimary.opacity(0.08))
+                    .background(Color.appIconChip)
                     .clipShape(Capsule())
                 }
             }
 
             Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(AppTheme.Fonts.inter(13, weight: .semibold))
+                .foregroundColor(Color.textSecondary.opacity(0.4))
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
-        .background(Color.appSurface)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: Color.appPrimary.opacity(0.06), radius: 12, x: 0, y: 4)
+        .shadow(color: Color.appPrimary.opacity(0.08), radius: 12, x: 0, y: 4)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.appPrimary.opacity(0.07), lineWidth: 1)
+                .stroke(Color.appCardBorder, lineWidth: 1)
         )
-    }
-
-
-    // MARK: - Personal Card
-
-    private var personalCard: some View {
-        cardSection(label: "PERSONAL") {
-            inlineField(
-                icon: "person.fill",
-                iconColor: Color.appPrimary,
-                title: "Name",
-                placeholder: "Your name",
-                text: $userName
-            )
-        }
-    }
-
-    // MARK: - Payment Info Card
-
-    private var paymentCard: some View {
-        cardSection(label: "PAYMENT INFO") {
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                showBankSheet = true
-            }) {
-                appRow(icon: "building.columns.fill", iconColor: Color(hex: "F59E0B"), title: "Bank", trailing: {
-                    HStack(spacing: 6) {
-                        Text(bankAccounts.isEmpty
-                             ? "No accounts"
-                             : "\(bankAccounts.count) account\(bankAccounts.count == 1 ? "" : "s")")
-                            .roundedFont(14, weight: .regular)
-                            .foregroundColor(Color.textSecondary)
-
-                        Image(systemName: "chevron.right")
-                            .font(AppTheme.Fonts.inter(11, weight: .semibold))
-                            .foregroundColor(Color.textSecondary.opacity(0.3))
-                    }
-                })
-            }
-            .buttonStyle(.plain)
-        }
     }
 
 
@@ -192,7 +127,7 @@ struct ProfileView: View {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 showLanguageSheet = true
             }) {
-                appRow(icon: "globe", iconColor: Color(hex: "6366F1"), title: "profile.language".localized, trailing: {
+                appRow(icon: "globe", iconColor: Color.appPrimary, title: "profile.language".localized, trailing: {
                     HStack(spacing: 6) {
                         Text(currentLanguage == "id" ? "🇮🇩" : "🇬🇧")
                             .font(.system(size: 14))
@@ -231,34 +166,6 @@ struct ProfileView: View {
         Divider()
             .background(Color.textSecondary.opacity(0.08))
             .padding(.leading, 70)
-    }
-
-    @ViewBuilder
-    private func inlineField(icon: String, iconColor: Color, title: String, placeholder: String, text: Binding<String>) -> some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(iconColor.opacity(0.12))
-                    .frame(width: 40, height: 40)
-                Image(systemName: icon)
-                    .font(AppTheme.Fonts.inter(16, weight: .medium))
-                    .foregroundColor(iconColor)
-            }
-
-            Text(title)
-                .roundedFont(15, weight: .regular)
-                .foregroundColor(Color.textPrimary)
-
-            Spacer()
-
-            TextField(placeholder, text: text)
-                .roundedFont(15, weight: .regular)
-                .foregroundColor(Color.textSecondary)
-                .multilineTextAlignment(.trailing)
-                .submitLabel(.done)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
     }
 
     @ViewBuilder
