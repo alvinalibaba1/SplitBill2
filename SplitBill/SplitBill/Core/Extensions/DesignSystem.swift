@@ -75,7 +75,7 @@ extension Color {
     // Readable brand color for text on card surfaces (≈6.9:1 on white)
     static let appBrandText = Color(UIColor { t in
         t.userInterfaceStyle == .dark
-            ? UIColor(hex: "9DBDEB")
+            ? UIColor(hex: "FFFFFF")
             : UIColor(hex: "14305A")
     })
     // Soft purple circle behind icons
